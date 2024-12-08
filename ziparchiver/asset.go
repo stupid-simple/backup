@@ -13,7 +13,6 @@ type zipAsset struct {
 	path             string
 	hash             uint64
 	uncompressedSize int64
-	compressedSize   int64
 	modTime          time.Time
 }
 
@@ -23,10 +22,6 @@ func (z *zipAsset) SourcePath() string {
 
 func (z *zipAsset) ArchivePath() string {
 	return z.archivePath
-}
-
-func (z *zipAsset) ArchivedSize() int64 {
-	return z.compressedSize
 }
 
 // Hash implements asset.Asset.
@@ -40,7 +35,6 @@ func (z *zipAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("name", z.name)
 	e.Uint64("hash", z.hash)
 	e.Int64("size", z.uncompressedSize)
-	e.Int64("compressed_size", z.compressedSize)
 	e.Str("archive", z.archivePath)
 	e.Str("source", z.sourcePath)
 }

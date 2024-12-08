@@ -19,5 +19,4 @@ type ArchivedAsset interface {
 	Asset
 	SourcePath() string  // path of the source where the asset was found
 	ArchivePath() string // path of the archive containing the file
-	ArchivedSize() int64 // lenth in bytes inside the archive
 }

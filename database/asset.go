@@ -18,10 +18,6 @@ func (d dbAsset) ArchivePath() string {
 	return d.record.Archive.Path
 }
 
-func (d dbAsset) ArchivedSize() int64 {
-	return d.record.ArchivedSize
-}
-
 func (d dbAsset) Hash() uint64 {
 	return uint64(d.record.Hash)
 }

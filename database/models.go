@@ -17,13 +17,12 @@ type Archive struct {
 }
 
 type ArchiveAsset struct {
-	ArchivePath  string  `gorm:"primaryKey"`
-	Path         string  `gorm:"primaryKey"`
-	Archive      Archive `gorm:"foreignKey:ArchivePath"`
-	Name         string
-	Hash         int64
-	ModTime      time.Time
-	CreatedAt    time.Time
-	Size         int64
-	ArchivedSize int64
+	ArchivePath string  `gorm:"primaryKey"`
+	Path        string  `gorm:"primaryKey"`
+	Archive     Archive `gorm:"foreignKey:ArchivePath"`
+	Name        string
+	Hash        int64
+	ModTime     time.Time
+	CreatedAt   time.Time
+	Size        int64
 }

@@ -162,7 +162,8 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 		tookSeconds := time.Since(startTime).Seconds()
 		logger.Debug().Object("asset", asset).Float64("seconds", tookSeconds).Msg("archived asset")
 	}()
-	n, err := io.Copy(w, assetFile)
+
+	_, err = io.Copy(w, assetFile)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +175,5 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 		hash:             asset.Hash(),
 		modTime:          asset.ModTime(),
 		uncompressedSize: asset.Size(),
-		compressedSize:   n,
 	}, nil
 }

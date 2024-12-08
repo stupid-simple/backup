@@ -233,12 +233,11 @@ func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan ass
 						SourcePath: a.SourcePath(),
 						Path:       a.ArchivePath(),
 					},
-					Path:         a.Path(),
-					Size:         a.Size(),
-					Hash:         int64(a.Hash()),
-					ModTime:      a.ModTime(),
-					Name:         a.Name(),
-					ArchivedSize: a.ArchivedSize(),
+					Path:    a.Path(),
+					Size:    a.Size(),
+					Hash:    int64(a.Hash()),
+					ModTime: a.ModTime(),
+					Name:    a.Name(),
 				}).Error; err != nil {
 					return err
 				}
