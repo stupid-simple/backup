@@ -1,0 +1,37 @@
+version: 2
+project_name: ssbak
+
+
+release:
+  github:
+    owner: stupid-simple
+    name: backup
+
+builds:
+  - id: ssbak
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    binary: ssbak
+
+archives:
+  - format: tar.gz
+    name_template: ssbak-{{ .Version }}-{{ .Os }}-{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+dockers:
+  - image_templates:
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/stupid-simple/backup:latest"
+    extra_files:
+      - entrypoint.sh
+
+changelog:
+  use: github
