@@ -26,12 +26,44 @@ checksum:
 
 dockers:
   - image_templates:
-      - "ghcr.io/stupid-simple/backup:{{ .Tag }}"
-      - "ghcr.io/stupid-simple/backup:v{{ .Major }}"
-      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/stupid-simple/backup:latest"
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-amd64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}-amd64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
     extra_files:
       - entrypoint.sh
+  - image_templates:
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-arm64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}-arm64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    extra_files:
+      - entrypoint.sh
+
+docker_manifests:
+  - name_template: "ghcr.io/stupid-simple/backup:latest"
+    image_templates:
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-amd64"
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/stupid-simple/backup:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-amd64"
+      - "ghcr.io/stupid-simple/backup:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/stupid-simple/backup:v{{ .Major }}"
+    image_templates:
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}-amd64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}-arm64"
+  - name_template: "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-arm64"
 
 changelog:
   use: github
