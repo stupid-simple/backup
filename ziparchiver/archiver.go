@@ -84,6 +84,18 @@ func StoreAssets(
 
 	fullPrefix := filepath.Join(dest.Dir, fmt.Sprintf("%s%d", dest.Prefix, time.Now().UTC().UnixMilli()))
 
+	return writeAssetsToZip(ctx, sourcePath, fullPrefix, assets, onArchived, logger, o)
+}
+
+func writeAssetsToZip(
+	ctx context.Context,
+	sourcePath string,
+	fullPrefix string,
+	assets <-chan asset.Asset,
+	onArchived func(asset.ArchivedAsset),
+	logger zerolog.Logger,
+	o storeOptions,
+) error {
 	var zipFile *zipwriter.ZipFile
 	if o.dryRun {
 		zipFile = zipwriter.NewNullZipFile()
