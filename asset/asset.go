@@ -1,7 +1,6 @@
 package asset
 
 import (
-	"context"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -14,11 +13,6 @@ type Asset interface {
 	Name() string // base name of the file
 	Size() int64  // length in bytes for regular files
 	ModTime() time.Time
-}
-
-type AssetIterator interface {
-	RootPath() string
-	IterateAssets(ctx context.Context) <-chan Asset
 }
 
 type ArchivedAsset interface {
