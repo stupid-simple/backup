@@ -3,6 +3,7 @@ package ziparchiver
 import (
 	"archive/zip"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,23 +15,28 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Define the he path to a new archive.
-type PathFunc = func() string
+type ArchiveDescriptor struct {
+	Dir    string // Directory path.
+	Prefix string // Can be empty.
+}
 
-// StoreAssets implements Archiver.
-func StoreAssets(ctx context.Context, archiveFilenameFunc PathFunc, sourcePath string, assets <-chan asset.Asset, logger zerolog.Logger, opts ...StoreOption) error {
+func StoreAssets(
+	ctx context.Context,
+	sourcePath string,
+	dest ArchiveDescriptor,
+	assets <-chan asset.Asset,
+	logger zerolog.Logger,
+	opts ...StoreOption,
+) error {
 	o := storeOptions{}
 	for _, applyOpts := range opts {
 		applyOpts(&o)
 	}
 
-	archivePath := archiveFilenameFunc()
-
-	logger = logger.With().Str("archive", archivePath).Logger()
 	logger.Info().Msg("backing up assets")
 
 	var wg sync.WaitGroup
-	storedAssets := 0
+	var storedAssets int
 	defer func() {
 		wg.Wait()
 		if ctx.Err() != nil {
@@ -71,53 +77,51 @@ func StoreAssets(ctx context.Context, archiveFilenameFunc PathFunc, sourcePath s
 			wg.Done()
 		}()
 	} else {
-		onArchived = func(a asset.ArchivedAsset) {
+		onArchived = func(asset.ArchivedAsset) {
 			storedAssets++
 		}
 	}
 
-	var err error
+	fullPrefix := filepath.Join(dest.Dir, fmt.Sprintf("%s%d", dest.Prefix, time.Now().UTC().UnixMilli()))
+
 	var zipFile *zipwriter.ZipFile
 	if o.dryRun {
 		zipFile = zipwriter.NewNullZipFile()
 	} else {
-		zipFile = zipwriter.NewLazyZipFile(archivePath)
+		zipFile = newZipFilePart(fullPrefix, 0)
+		logger.Info().Str("path", zipFile.Path()).Msg("open archive")
 	}
 	defer func() {
 		if err := zipFile.Close(); err != nil {
 			logger.Warn().Err(err).Msg("could not close backup file")
 		}
-		if storedAssets == 0 {
-			err = zipFile.Delete()
-			if err != nil {
-				logger.Warn().Err(err).Msg("could not remove backup file")
-			}
-			return
-		}
 	}()
 
-	return writeAssetsToZipFile(
-		ctx,
-		zipFile,
-		sourcePath,
-		assets,
-		onArchived,
-		logger,
-	)
-}
-
-func writeAssetsToZipFile(
-	ctx context.Context,
-	zipFile *zipwriter.ZipFile,
-	sourcePath string,
-	assets <-chan asset.Asset,
-	onArchived func(a asset.ArchivedAsset),
-	logger zerolog.Logger) error {
-
 	var err error
+	var written int64
+	var part int
 	for asset := range assets {
 		if ctx.Err() != nil {
 			return nil
+		}
+		if o.maxFileBytes > 0 && asset.Size() >= o.maxFileBytes && !o.includeLargeFiles {
+			logger.Warn().
+				Object("asset", asset).
+				Int64("max_size", o.maxFileBytes).
+				Msg("asset larger than max file size. Will be skipped")
+			continue
+		}
+		if o.maxFileBytes > 0 && written+asset.Size() >= o.maxFileBytes {
+			logger.Debug().
+				Int64("size", asset.Size()).
+				Msg("archive size larger than max file size. Will open a new file")
+			if err = zipFile.Close(); err != nil {
+				logger.Warn().Err(err).Msg("could not close backup file")
+			}
+			part++
+			written = 0
+			zipFile = newZipFilePart(fullPrefix, part)
+			logger.Info().Str("path", zipFile.Path()).Msg("open archive")
 		}
 
 		header := &zip.FileHeader{
@@ -146,6 +150,7 @@ func writeAssetsToZipFile(
 			logger.Debug().Object("asset", asset).
 				Msg("backed up asset")
 		}
+		written += asset.Size()
 		onArchived(archivedAsset)
 	}
 
@@ -177,4 +182,11 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 		modTime:          asset.ModTime(),
 		uncompressedSize: asset.Size(),
 	}, nil
+}
+
+func newZipFilePart(fullPrefix string, part int) *zipwriter.ZipFile {
+	if part == 0 {
+		return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.zip", fullPrefix))
+	}
+	return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.%d.zip", fullPrefix, part))
 }

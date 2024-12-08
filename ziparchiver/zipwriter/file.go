@@ -13,6 +13,7 @@ import (
 // Returns zip Writer helper that opens the file upon first write.
 func NewLazyZipFile(path string) *ZipFile {
 	return &ZipFile{
+		path: path,
 		lazyOpenFunc: func() (*os.File, error) {
 			return openArchiveFile(path)
 		},
@@ -25,6 +26,7 @@ func NewLazyZipFile(path string) *ZipFile {
 // Returns zip Writer helper that opens the null device upon first write.
 func NewNullZipFile() *ZipFile {
 	return &ZipFile{
+		path:         "/dev/null",
 		lazyOpenFunc: openNullFile,
 		delFunc:      func() error { return nil },
 	}
@@ -32,6 +34,7 @@ func NewNullZipFile() *ZipFile {
 
 type ZipFile struct {
 	init         bool
+	path         string
 	file         *os.File
 	writer       *zip.Writer
 	lazyOpenFunc func() (*os.File, error)
@@ -39,7 +42,7 @@ type ZipFile struct {
 }
 
 func (z *ZipFile) Path() string {
-	return z.file.Name()
+	return z.path
 }
 
 // Close the file and writer if it was opened.

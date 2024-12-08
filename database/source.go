@@ -129,14 +129,17 @@ func (m BackupSource) findMissingAssetsInBatches(
 
 	logger.Debug().Msg("find missing assets in batches")
 
-	var countMissing int
+	var countModified, countNew int
 	defer func() {
 		if ctx.Err() != nil {
 			logger.Info().Msg("cancelled finding assets")
-		} else if countMissing == 0 {
+		} else if countModified+countNew == 0 {
 			logger.Info().Msg("no new or modified assets found")
 		} else {
-			logger.Info().Int("new", countMissing).Msg("done finding new or modified assets")
+			logger.Info().
+				Int("new", countNew).
+				Int("modified", countModified).
+				Msg("done finding new or modified assets")
 		}
 	}()
 
@@ -176,14 +179,14 @@ func (m BackupSource) findMissingAssetsInBatches(
 			archivedAsset, ok := archivedByPath[a.Path()]
 			if !ok {
 				m.db.Logger.Debug().Object("asset", a).Msg("asset not archived")
-				countMissing++
+				countNew++
 				*missing = append(*missing, a)
 				continue
 			}
 
 			if a.Hash() != uint64(archivedAsset.Hash) {
 				m.db.Logger.Info().Object("asset", a).Msg("asset was modified")
-				countMissing++
+				countModified++
 				*missing = append(*missing, a)
 			}
 		}

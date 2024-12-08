@@ -11,26 +11,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Command struct {
-	Backup struct {
-		Source        string `help:"source directory path" short:"s" required:""`
-		Dest          string `help:"destination directory path" short:"D" required:""`
-		ArchivePrefix string `help:"archive prefix"`
-		Database      string `help:"database path" short:"d" required:""`
-		DryRun        bool   `help:"don't write any files, just print the output"`
-	} `cmd:"" help:"Manually backup directory files."`
-	Restore struct {
-		Dest     string `help:"destination directory path where files will be restored" short:"D" required:""`
-		Database string `help:"database path" short:"d" required:""`
-		DryRun   bool   `help:"don't write any files, just print the output"`
-	} `cmd:"" help:"Manually restore directory files."`
-	Daemon struct {
-		Config   string `help:"config file path" short:"c" required:""`
-		Database string `help:"database path" short:"d" required:""`
-		DryRun   bool   `help:"don't write any files, just print the output"`
-	} `cmd:"" help:"Run the backup service."`
-}
-
 func newLogger() zerolog.Logger {
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: false, TimeFormat: time.RFC3339}
 	consoleWriter.TimeFormat = "[" + time.RFC3339 + "]"

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/i-segura/snapsync/backup"
 	"github.com/i-segura/snapsync/config"
 	"github.com/i-segura/snapsync/database"
 	"github.com/i-segura/snapsync/fileutils"
@@ -50,7 +49,10 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 	})
 
 	addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
-	startConfigFileWatcher(ctx, args.Daemon.Config, logger, func(cfg *config.Config) {
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	startConfigFileWatcher(ctx, args.Daemon.Config, logger, ticker, func(cfg *config.Config) {
 		scheduler.RemoveJobs()
 		addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
 	})
@@ -142,9 +144,7 @@ func addSyncJobsFromConfig(
 		}
 
 		logger.Info().
-			Str("source", source.SourceDir).
-			Str("dest", source.ArchiveDir).
-			Str("schedule", source.Schedule).
+			Object("source", source).
 			Msg("added sync job")
 	}
 	return nil
@@ -168,19 +168,20 @@ func configSourceToBackupJob(
 	}
 
 	return &backupJob{
-		ctx:           ctx,
-		sourcePath:    cfgSource.SourceDir,
-		destPath:      cfgSource.ArchiveDir,
-		dryRun:        dryRun,
-		archivePrefix: cfgSource.ArchivePrefix,
-		db:            db,
-		logger:        logger,
+		ctx:               ctx,
+		sourcePath:        cfgSource.SourceDir,
+		destPath:          cfgSource.ArchiveDir,
+		dryRun:            dryRun,
+		archivePrefix:     cfgSource.ArchivePrefix,
+		includeLargeFiles: cfgSource.ArchiveIncludeLargeFiles,
+		db:                db,
+		logger:            logger,
 	}, nil
 }
 
-func startConfigFileWatcher(ctx context.Context, cfgPath string, logger zerolog.Logger, onChanged func(cfg *config.Config)) {
+func startConfigFileWatcher(ctx context.Context, cfgPath string, logger zerolog.Logger, ticker *time.Ticker, onChanged func(cfg *config.Config)) {
 	logger.Info().Str("path", cfgPath).Msg("watching config file for changes")
-	watcher, err := fileutils.WatchFile(ctx, cfgPath, when(time.After(30*time.Second)), func(err error) {
+	watcher, err := fileutils.WatchFile(ctx, cfgPath, when(ticker.C), func(err error) {
 		logger.Error().Err(err).Msg("could not watch config file")
 	})
 	if err != nil {
@@ -220,22 +221,32 @@ func when[T any](ch <-chan T) <-chan struct{} {
 }
 
 type backupJob struct {
-	sourcePath    string
-	destPath      string
-	archivePrefix string
-	ctx           context.Context
-	logger        zerolog.Logger
-	db            *database.Database
-	dryRun        bool
+	sourcePath        string
+	destPath          string
+	archivePrefix     string
+	maxFileBytes      int64
+	includeLargeFiles bool
+	ctx               context.Context
+	logger            zerolog.Logger
+	db                *database.Database
+	dryRun            bool
 }
 
 func (b *backupJob) Run() {
-	if err := backup.BackupSource(b.ctx, backup.BackupParams{
-		SourcePath: b.sourcePath,
-		DestPath:   b.destPath,
-		DB:         b.db,
-		Logger:     b.logger,
-	}, backup.WithDryRun(b.dryRun), backup.WithArchivePrefix(b.archivePrefix)); err != nil {
+	err := backupFiles(
+		b.ctx,
+		backupParams{
+			sourcePath:        b.sourcePath,
+			destPath:          b.destPath,
+			archivePrefix:     b.archivePrefix,
+			maxFileBytes:      b.maxFileBytes,
+			includeLargeFiles: b.includeLargeFiles,
+			db:                b.db,
+			dryRun:            b.dryRun,
+			logger:            b.logger,
+		},
+	)
+	if err != nil {
 		b.logger.Error().Err(err).Str("source", b.sourcePath).Str("dest", b.destPath).Msg("backup job failed")
 	}
 }
