@@ -17,12 +17,16 @@ import (
 type BackupParams struct {
 	SourcePath string
 	DestPath   string
-	DryRun     bool
 	DB         *database.Database
 	Logger     zerolog.Logger
 }
 
-func BackupSource(ctx context.Context, params BackupParams) error {
+func BackupSource(ctx context.Context, params BackupParams, opts ...Option) error {
+	o := options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	logger := params.Logger
 	startTime := time.Now()
 	logger.Info().Str("source", params.SourcePath).Str("dest", params.DestPath).Msg("starting backup")
@@ -67,18 +71,18 @@ func BackupSource(ctx context.Context, params BackupParams) error {
 
 	return ziparchiver.StoreAssets(
 		ctx,
-		randomArchiveNameFunc(params.DestPath),
+		randomArchiveNameFunc(o.archivePrefix, params.DestPath),
 		params.SourcePath,
 		scanned,
 		logger,
-		ziparchiver.WithDryRun(params.DryRun),
+		ziparchiver.WithDryRun(o.dryRun),
 		ziparchiver.WithOnlyNewAssets(src),
 		ziparchiver.WithRegisterArchivedAssets(src),
 	)
 }
 
-func randomArchiveNameFunc(dirPath string) func() string {
+func randomArchiveNameFunc(prefix string, dirPath string) func() string {
 	return func() string {
-		return filepath.Join(dirPath, fmt.Sprintf("%d.zip", time.Now().UTC().UnixMilli()))
+		return filepath.Join(dirPath, fmt.Sprintf("%s%d.zip", prefix, time.Now().UTC().UnixMilli()))
 	}
 }

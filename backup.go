@@ -37,14 +37,16 @@ func backupCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 	err = backup.BackupSource(ctx, backup.BackupParams{
 		SourcePath: srcPath,
 		DestPath:   args.Backup.Dest,
-		DryRun:     args.Backup.DryRun,
 		DB: &database.Database{
 			Cli:    db,
 			Logger: logger,
 			DryRun: args.Backup.DryRun,
 		},
 		Logger: logger,
-	})
+	},
+		backup.WithDryRun(args.Backup.DryRun),
+		backup.WithArchivePrefix(args.Backup.ArchivePrefix),
+	)
 	if err != nil {
 		return err
 	}
@@ -55,11 +57,5 @@ func backupCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 func randomDirectoryArchiveFunc(destPath string) func() string {
 	return func() string {
 		return filepath.Join(destPath, fmt.Sprintf("%d.zip", time.Now().UTC().UnixMilli()))
-	}
-}
-
-func fixedArchivePathFunc(filePath string) func() string {
-	return func() string {
-		return filePath
 	}
 }

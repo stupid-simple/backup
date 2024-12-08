@@ -168,12 +168,13 @@ func configSourceToBackupJob(
 	}
 
 	return &backupJob{
-		ctx:        ctx,
-		sourcePath: cfgSource.SourceDir,
-		destPath:   cfgSource.ArchiveDir,
-		dryRun:     dryRun,
-		db:         db,
-		logger:     logger,
+		ctx:           ctx,
+		sourcePath:    cfgSource.SourceDir,
+		destPath:      cfgSource.ArchiveDir,
+		dryRun:        dryRun,
+		archivePrefix: cfgSource.ArchivePrefix,
+		db:            db,
+		logger:        logger,
 	}, nil
 }
 
@@ -219,22 +220,22 @@ func when[T any](ch <-chan T) <-chan struct{} {
 }
 
 type backupJob struct {
-	sourcePath string
-	destPath   string
-	ctx        context.Context
-	logger     zerolog.Logger
-	db         *database.Database
-	dryRun     bool
+	sourcePath    string
+	destPath      string
+	archivePrefix string
+	ctx           context.Context
+	logger        zerolog.Logger
+	db            *database.Database
+	dryRun        bool
 }
 
 func (b *backupJob) Run() {
 	if err := backup.BackupSource(b.ctx, backup.BackupParams{
 		SourcePath: b.sourcePath,
 		DestPath:   b.destPath,
-		DryRun:     b.dryRun,
 		DB:         b.db,
 		Logger:     b.logger,
-	}); err != nil {
+	}, backup.WithDryRun(b.dryRun), backup.WithArchivePrefix(b.archivePrefix)); err != nil {
 		b.logger.Error().Err(err).Str("source", b.sourcePath).Str("dest", b.destPath).Msg("backup job failed")
 	}
 }
