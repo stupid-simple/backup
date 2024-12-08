@@ -123,6 +123,7 @@ func writeAssetsToZipFile(
 		header := &zip.FileHeader{
 			UncompressedSize64: uint64(asset.Size()),
 			Modified:           asset.ModTime(),
+			Method:             zip.Deflate,
 		}
 		header.Name, err = filepath.Rel(sourcePath, asset.Path())
 		if err != nil {
