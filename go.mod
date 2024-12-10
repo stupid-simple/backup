@@ -5,7 +5,7 @@ go 1.22.7
 toolchain go1.22.9
 
 require (
-	github.com/alecthomas/kong v0.9.0
+	github.com/alecthomas/kong v1.0.0
 	github.com/cespare/xxhash v1.1.0
 	github.com/docker/go-units v0.5.0
 	github.com/glebarez/sqlite v1.11.0
