@@ -15,11 +15,24 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X "main.Version={{ .Tag }}"
+      - -X "main.Version={{ .Tag }}"
+    binary: ssbak
+  - id: ssbak-static
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X "main.Version={{ .Tag }}"
     binary: ssbak
 
 archives:
-  - format: tar.gz
+  - builds:
+      - ssbak
+    format: tar.gz
     name_template: ssbak-{{ .Version }}-{{ .Os }}-{{ .Arch }}
 
 checksum:
@@ -27,7 +40,9 @@ checksum:
   algorithm: sha256
 
 dockers:
-  - image_templates:
+  - ids:
+      - ssbak-static
+    image_templates:
       - "ghcr.io/stupid-simple/backup:{{ .Tag }}-amd64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}-amd64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-amd64"
@@ -39,7 +54,9 @@ dockers:
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
-  - image_templates:
+  - ids:
+      - ssbak-static
+    image_templates:
       - "ghcr.io/stupid-simple/backup:{{ .Tag }}-arm64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}-arm64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}.{{ .Minor }}-arm64"
