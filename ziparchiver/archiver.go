@@ -34,6 +34,7 @@ func StoreAssets(
 		applyOpts(&o)
 	}
 
+	logger = logger.With().Str("source", sourcePath).Str("dest", dest.Dir).Logger()
 	logger.Info().Msg("backing up assets")
 
 	var wg sync.WaitGroup

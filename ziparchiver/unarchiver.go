@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/i-segura/snapsync/asset"
 	"github.com/i-segura/snapsync/fileutils"
@@ -25,20 +26,31 @@ func Restore(ctx context.Context, assets <-chan asset.ArchivedAsset, logger zero
 		applyOpts(&o)
 	}
 
-	var restoredAssets int
+	logger.Info().Msg("start restoring assets")
+
+	var restoredAssets, skippedAssets int
 	defer func() {
 		if ctx.Err() != nil {
-			logger.Info().Int("restored", restoredAssets).Msg("cancelled restore")
+			logger.Info().
+				Int("restored", restoredAssets).
+				Int("skipped", skippedAssets).
+				Msg("cancelled restore")
 		} else if restoredAssets == 0 {
-			logger.Info().Msg("no assets restored")
+			logger.Info().Int("skipped", skippedAssets).Msg("no assets restored")
 		} else {
-			logger.Info().Int("restored", restoredAssets).Msg("done restoring assets")
+			logger.Info().
+				Int("restored", restoredAssets).
+				Int("skipped", skippedAssets).Msg("done restoring assets")
 		}
 	}()
 
 	zipFile := Open()
 	defer zipFile.Close()
 
+	throttledLogger := logger.Sample(&zerolog.BurstSampler{
+		Burst:  1,
+		Period: 1 * time.Second,
+	})
 	for asset := range assets {
 		if ctx.Err() != nil {
 			return nil
@@ -53,9 +65,11 @@ func Restore(ctx context.Context, assets <-chan asset.ArchivedAsset, logger zero
 
 		size, err := restoreAsset(f, asset, logger, false, o.dryRun)
 		if errors.Is(err, errSkippedSameFile) {
-			logger.Info().Object("asset", asset).Msg("file already present, skipping")
+			logger.Debug().Object("asset", asset).Msg("file already present, skipping")
+			skippedAssets++
 		} else if errors.Is(err, errSkippedModified) {
-			logger.Info().Object("asset", asset).Msg("found existing file. The file has been modified, skipping")
+			logger.Debug().Object("asset", asset).Msg("found existing file. The file has been modified, skipping")
+			skippedAssets++
 		} else if err != nil {
 			logger.Warn().Err(err).Object("asset", asset).Msg("could not restore asset")
 		} else {
@@ -63,6 +77,10 @@ func Restore(ctx context.Context, assets <-chan asset.ArchivedAsset, logger zero
 			restoredAssets++
 		}
 
+		throttledLogger.Info().
+			Int("restored", restoredAssets).
+			Int("skipped", skippedAssets).
+			Msg("restoring assets")
 	}
 
 	return nil

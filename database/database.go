@@ -15,7 +15,7 @@ type Database struct {
 	DryRun bool
 }
 
-func (d *Database) GetSource(ctx context.Context, path string) (BackupSource, error) {
+func (d *Database) GetSource(ctx context.Context, path string) (*BackupSource, error) {
 	d.Lock.Lock()
 	defer d.Lock.Unlock()
 
@@ -24,8 +24,8 @@ func (d *Database) GetSource(ctx context.Context, path string) (BackupSource, er
 	source := &Source{}
 	err := d.Cli.Where(Source{Path: path}).FirstOrCreate(source).Error
 	if err != nil {
-		return BackupSource{}, err
+		return nil, err
 	}
 
-	return BackupSource{db: d, record: source}, nil
+	return &BackupSource{db: d, record: source, logger: d.Logger.With().Str("source", path).Logger()}, nil
 }

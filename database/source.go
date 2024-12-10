@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/i-segura/snapsync/asset"
 	"github.com/i-segura/snapsync/fileutils"
@@ -15,66 +16,72 @@ const iterateBatchSize = 50
 type BackupSource struct {
 	db     *Database
 	record *Source
+	logger zerolog.Logger
 }
 
-func (d BackupSource) Path() string {
-	return d.record.Path
+func (bs *BackupSource) Path() string {
+	return bs.record.Path
 }
 
-func (d BackupSource) FindMissingAssets(ctx context.Context, from <-chan asset.Asset) (<-chan asset.Asset, error) {
+func (bs *BackupSource) FindMissingAssets(
+	ctx context.Context,
+	from <-chan asset.Asset,
+) (<-chan asset.Asset, error) {
 	out := make(chan asset.Asset)
 	go func() {
-		d.db.Logger.Info().Msg("finding new or modified assets to backup")
+		bs.logger.Info().Msg("finding new or modified assets to backup")
 		defer close(out)
 		missing := []asset.Asset{}
-		d.findMissingAssetsInBatches(ctx, from, iterateBatchSize, &missing, func(err error) error {
-			if err != nil {
-				d.db.Logger.Error().Err(err).Msg("could not read asset database records")
-				return err
-			}
-
-			for _, a := range missing {
-				select {
-				case <-ctx.Done():
-					return nil
-				case out <- a:
+		bs.findMissingAssetsInBatches(
+			ctx,
+			from,
+			iterateBatchSize,
+			&missing,
+			func(err error) error {
+				if err != nil {
+					bs.db.Logger.Error().Err(err).Msg("could not read asset database records")
+					return err
 				}
-			}
 
-			return nil
-		})
+				for _, a := range missing {
+					select {
+					case <-ctx.Done():
+						return nil
+					case out <- a:
+					}
+				}
+
+				return nil
+			})
 	}()
 
 	return out, nil
 }
 
-func (d BackupSource) Register(ctx context.Context, from <-chan asset.ArchivedAsset) error {
-	logger := d.db.Logger.With().
-		Str("source", d.record.Path).
-		Logger()
+func (bs *BackupSource) Register(ctx context.Context, from <-chan asset.ArchivedAsset) error {
 
-	logger.Info().Msg("register backup assets")
+	bs.logger.Info().Msg("register backup assets")
 
 	var count int
 	defer func() {
 		if ctx.Err() != nil {
-			logger.Info().Msg("cancelled recording backup assets")
+			bs.logger.Info().Msg("cancelled recording backup assets")
 		} else if count == 0 {
-			logger.Info().Msg("no backup assets recorded")
+			bs.logger.Info().Msg("no backup assets recorded")
 		} else {
-			logger.Info().Int("recorded", count).Msg("done recording backup assets")
+			bs.logger.Info().Int("recorded", count).Msg("done recording backup assets")
 		}
 	}()
 
 	var err error
-	count, err = d.recordAssetsInBatches(ctx, from, logger)
+	count, err = bs.recordAssetsInBatches(ctx, from, bs.logger)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.ArchivedAsset, error) {
+func (bs *BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.ArchivedAsset, error) {
 	out := make(chan asset.ArchivedAsset)
 
 	go func() {
@@ -83,18 +90,18 @@ func (s BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.Arch
 		for {
 			assets := []ArchiveAsset{}
 
-			subQuery := s.db.Cli.WithContext(ctx).
+			subQuery := bs.db.Cli.WithContext(ctx).
 				Select("archive_asset.path, MAX(archive_asset.created_at) AS max_created_at").
 				Joins("JOIN archive ON archive.path = archive_asset.archive_path").
-				Where("archive.source_path = ?", s.record.Path).
+				Where("archive.source_path = ?", bs.record.Path).
 				Group("archive_asset.path").
 				Order("archive_asset.created_at DESC").
 				Limit(iterateBatchSize).
 				Offset(offset).
 				Table("archive_asset")
 
-			s.db.Lock.Lock()
-			err := s.db.Cli.
+			bs.db.Lock.Lock()
+			err := bs.db.Cli.
 				Select("archive_asset.*").
 				Joins("JOIN (?) AS latest ON latest.path = archive_asset.path "+
 					"AND latest.max_created_at = archive_asset.created_at", subQuery).
@@ -102,9 +109,9 @@ func (s BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.Arch
 				Order("archive_asset.created_at DESC").
 				Find(&assets).Error
 
-			s.db.Lock.Unlock()
+			bs.db.Lock.Unlock()
 			if err != nil {
-				s.db.Logger.Error().Err(err).Msg("error fetching assets from database")
+				bs.db.Logger.Error().Err(err).Msg("error fetching assets from database")
 				return
 			}
 			if len(assets) == 0 {
@@ -124,21 +131,24 @@ func (s BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.Arch
 	return out, nil
 }
 
-func (m BackupSource) findMissingAssetsInBatches(
-	ctx context.Context, from <-chan asset.Asset, batchSize int, missing *[]asset.Asset, onBatch func(err error) error,
+func (bs *BackupSource) findMissingAssetsInBatches(
+	ctx context.Context,
+	from <-chan asset.Asset,
+	batchSize int,
+	missing *[]asset.Asset,
+	onBatch func(err error) error,
 ) {
-	logger := m.db.Logger
-
-	logger.Debug().Msg("find missing assets in batches")
+	bs.logger.Info().Msg("start finding missing assets in batches")
 
 	var countModified, countNew int
 	defer func() {
 		if ctx.Err() != nil {
-			logger.Info().Msg("cancelled finding assets")
+			bs.logger.Info().Str("source", bs.record.Path).Msg("cancelled finding assets")
 		} else if countModified+countNew == 0 {
-			logger.Info().Msg("no new or modified assets found")
+			bs.logger.Info().Str("source", bs.record.Path).Msg("no new or modified assets found")
 		} else {
-			logger.Info().
+			bs.logger.Info().
+				Str("source", bs.record.Path).
 				Int("new", countNew).
 				Int("modified", countModified).
 				Msg("done finding new or modified assets")
@@ -148,7 +158,17 @@ func (m BackupSource) findMissingAssetsInBatches(
 	findBatch := make([]asset.Asset, 0, batchSize)
 	lookForPaths := make([]string, 0, batchSize)
 
+	throttledLogger := bs.logger.Sample(&zerolog.BurstSampler{
+		Burst:  1,
+		Period: 1 * time.Second,
+	})
 	for {
+		throttledLogger.Info().
+			Int("batch_size", batchSize).
+			Int("batch", len(findBatch)).
+			Int("new", countNew).
+			Int("modified", countModified).
+			Msg("finding missing assets in batches")
 		if ctx.Err() != nil {
 			break
 		}
@@ -161,11 +181,11 @@ func (m BackupSource) findMissingAssetsInBatches(
 		}
 
 		results := []ArchiveAsset{}
-		m.db.Lock.Lock()
-		err := m.db.Cli.WithContext(ctx).
+		bs.db.Lock.Lock()
+		err := bs.db.Cli.WithContext(ctx).
 			Where("path in ?", lookForPaths).
 			Find(&results).Error
-		m.db.Lock.Unlock()
+		bs.db.Lock.Unlock()
 		if err != nil {
 			managedErr := onBatch(err)
 			if managedErr != nil {
@@ -180,7 +200,7 @@ func (m BackupSource) findMissingAssetsInBatches(
 		for _, a := range findBatch {
 			archivedAsset, ok := archivedByPath[a.Path()]
 			if !ok {
-				m.db.Logger.Debug().Object("asset", a).Msg("asset not archived")
+				bs.db.Logger.Debug().Object("asset", a).Msg("asset not archived")
 				countNew++
 				*missing = append(*missing, a)
 				continue
@@ -188,7 +208,7 @@ func (m BackupSource) findMissingAssetsInBatches(
 
 			ok, err := isAssetModified(a, archivedAsset)
 			if err != nil {
-				m.db.Logger.
+				bs.db.Logger.
 					Error().
 					Err(err).
 					Object("asset", a).
@@ -196,13 +216,13 @@ func (m BackupSource) findMissingAssetsInBatches(
 				continue
 			}
 			if ok {
-				m.db.Logger.Info().Object("asset", a).Msg("asset was modified")
+				bs.db.Logger.Info().Object("asset", a).Msg("asset was modified")
 				countModified++
 				*missing = append(*missing, a)
 			}
 		}
 		if len(*missing) > 0 {
-			logger.Debug().Msg("found missing assets batch")
+			bs.logger.Debug().Msg("found missing assets batch")
 		}
 		managedErr := onBatch(nil)
 		if managedErr != nil {
@@ -218,7 +238,11 @@ func (m BackupSource) findMissingAssetsInBatches(
 	}
 }
 
-func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan asset.ArchivedAsset, logger zerolog.Logger) (int, error) {
+func (bs *BackupSource) recordAssetsInBatches(
+	ctx context.Context,
+	from <-chan asset.ArchivedAsset,
+	logger zerolog.Logger,
+) (int, error) {
 	var countRecorded int
 	for {
 		if ctx.Err() != nil {
@@ -227,7 +251,7 @@ func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan ass
 
 		archiveAssets := make([]asset.ArchivedAsset, 0, iterateBatchSize)
 		eoc := consumeN(ctx, iterateBatchSize, from, func(a asset.ArchivedAsset) {
-			if a.SourcePath() != d.record.Path {
+			if a.SourcePath() != bs.record.Path {
 				logger.Warn().Object("asset", a).Msg("skipping asset from different source")
 			}
 			archiveAssets = append(archiveAssets, a)
@@ -239,8 +263,8 @@ func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan ass
 
 		logger.Debug().Int("size", len(archiveAssets)).Msg("record archive assets batch")
 
-		d.db.Lock.Lock()
-		err := d.db.Cli.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		bs.db.Lock.Lock()
+		err := bs.db.Cli.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			for _, a := range archiveAssets {
 				if err := tx.Create(&ArchiveAsset{
 					Archive: Archive{
@@ -259,7 +283,7 @@ func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan ass
 			}
 			return nil
 		})
-		d.db.Lock.Unlock()
+		bs.db.Lock.Unlock()
 		if err != nil {
 			return 0, err
 		}

@@ -53,5 +53,10 @@ func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) er
 		return err
 	}
 
-	return ziparchiver.Restore(ctx, assets, logger, ziparchiver.WithRestoreDryRun(args.Restore.DryRun))
+	return ziparchiver.Restore(
+		ctx,
+		assets,
+		logger.With().Str("dest", destPath).Logger(),
+		ziparchiver.WithRestoreDryRun(args.Restore.DryRun),
+	)
 }
