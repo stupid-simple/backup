@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/i-segura/snapsync/database"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/database"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"

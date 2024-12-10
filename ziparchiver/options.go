@@ -3,7 +3,7 @@ package ziparchiver
 import (
 	"context"
 
-	"github.com/i-segura/snapsync/asset"
+	"github.com/stupid-simple/backup/asset"
 )
 
 type StoreOption func(o *storeOptions)

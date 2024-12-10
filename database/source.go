@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/i-segura/snapsync/asset"
-	"github.com/i-segura/snapsync/fileutils"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/asset"
+	"github.com/stupid-simple/backup/fileutils"
 	"gorm.io/gorm"
 )
 

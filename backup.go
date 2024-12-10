@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/i-segura/snapsync/asset"
-	"github.com/i-segura/snapsync/database"
-	"github.com/i-segura/snapsync/fileutils"
-	"github.com/i-segura/snapsync/ziparchiver"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/asset"
+	"github.com/stupid-simple/backup/database"
+	"github.com/stupid-simple/backup/fileutils"
+	"github.com/stupid-simple/backup/ziparchiver"
 )
 
 func backupCommand(ctx context.Context, args Command, logger zerolog.Logger) error {

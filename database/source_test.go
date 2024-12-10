@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/i-segura/snapsync/asset"
-	"github.com/i-segura/snapsync/database"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stupid-simple/backup/asset"
+	"github.com/stupid-simple/backup/database"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )

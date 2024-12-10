@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/i-segura/snapsync/config"
+	"github.com/stupid-simple/backup/config"
 )
 
 var goodConfig = `

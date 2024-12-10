@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/i-segura/snapsync/fileutils"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 // Returns zip Writer helper that opens the file upon first write.

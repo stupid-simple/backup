@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/i-segura/snapsync/fileutils"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 var data = []byte("hello world")

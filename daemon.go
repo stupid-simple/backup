@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/i-segura/snapsync/config"
-	"github.com/i-segura/snapsync/database"
-	"github.com/i-segura/snapsync/fileutils"
-	"github.com/i-segura/snapsync/scheduler"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/config"
+	"github.com/stupid-simple/backup/database"
+	"github.com/stupid-simple/backup/fileutils"
+	"github.com/stupid-simple/backup/scheduler"
 )
 
 type listenAddress struct {

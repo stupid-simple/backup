@@ -1,4 +1,4 @@
-module github.com/i-segura/snapsync
+module github.com/stupid-simple/backup
 
 go 1.22.7
 

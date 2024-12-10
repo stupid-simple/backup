@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/i-segura/snapsync/fileutils"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 func TestWatchFile_NotChanged(t *testing.T) {

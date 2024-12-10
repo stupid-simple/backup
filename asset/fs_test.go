@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/i-segura/snapsync/asset"
+	"github.com/stupid-simple/backup/asset"
 )
 
 var data = []byte("hello world")

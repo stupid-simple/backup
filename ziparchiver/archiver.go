@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/i-segura/snapsync/asset"
-	"github.com/i-segura/snapsync/fileutils"
-	"github.com/i-segura/snapsync/ziparchiver/zipwriter"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/asset"
+	"github.com/stupid-simple/backup/fileutils"
+	"github.com/stupid-simple/backup/ziparchiver/zipwriter"
 )
 
 type ArchiveDescriptor struct {

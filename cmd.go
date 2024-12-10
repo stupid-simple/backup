@@ -1,6 +1,6 @@
 package main
 
-import "github.com/i-segura/snapsync/config"
+import "github.com/stupid-simple/backup/config"
 
 type Command struct {
 	Version struct{} `cmd:"" help:"Print version information."`

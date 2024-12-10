@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/i-segura/snapsync/database"
-	"github.com/i-segura/snapsync/ziparchiver"
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/database"
+	"github.com/stupid-simple/backup/ziparchiver"
 )
 
 func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
