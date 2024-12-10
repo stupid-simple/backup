@@ -2,7 +2,7 @@
 
 ## Description
 
-This tool allows backing up files to zip files. An automated process can be setup in order to scan target directories periodically. The process will check which files are not backed up and compress them into new zip files.
+This tool allows backing up files to zip files in Linux. An automated process can be setup in order to scan target directories periodically. The process will check which files are not backed up and compress them into new zip files.
 
 ### *Why I made this*
 
@@ -26,10 +26,13 @@ Parameters:
 - `sources`: A list of backup sources.
     - `source_dir`: The source directory. The directory and its subdirectories will be scanned for regular files to backup.
     - `archive_dir`: The target directory where backup archives will be generated.
-    - `enable`: Whether to schedule this source.
-    - `cron`: The schedule in UNIX cron format.  
+    - `enable`: Whether to schedule this backup.
+    - `cron`: The schedule in UNIX cron format. 
+    - (optional) `archive_prefix`: This will be appended to the name of generated archive files.
+    - (optional) `archive_max_sum_size`: The maximum bytes that sum the files being written into archives. This is before compression. Is written in units. Example: "32", "32b", "32K", "32Gb"...
+    - (optional) `archive_include_large_files`: Default is false. Include files greater than `archive_max_sum_size` even if the compressed archive can end up greater than this size.
 
-Example:
+Example of minimal config for backup:
 ```json
 {
     "sources": [
@@ -38,6 +41,30 @@ Example:
             "archive_dir": "/zip_files_dir",
             "enable": true,
             "cron": "0 0 * * *"
+        }
+    ]
+}
+```
+
+Other example:
+```json
+{
+    "sources": [
+        {
+            "source_dir": "/backup_target_1",
+            "archive_dir": "/archives",
+            "archive_prefix": "target_1_",
+            "enable": true,
+            "cron": "0 0 * * *"
+        },
+        {
+            "source_dir": "/backup_target_2",
+            "archive_dir": "/archives",
+            "archive_prefix": "target_2_",
+            "archive_max_sum_size": "32M",
+            "archive_include_large_files": true,
+            "enable": true,
+            "cron": "0 * * * *"
         }
     ]
 }
