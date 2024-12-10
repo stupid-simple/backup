@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
-	"strings"
 	"time"
 
 	"github.com/i-segura/snapsync/config"
@@ -24,13 +22,13 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 		logger = logger.With().Bool("dryrun", true).Logger()
 	}
 
+	if args.Daemon.Database == "" {
+		return fmt.Errorf("no database specified")
+	}
+
 	cfg, err := config.LoadFromFile(args.Daemon.Config)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
-	}
-
-	if args.Daemon.Database == "" {
-		return fmt.Errorf("no database specified")
 	}
 
 	dbCli, err := newSQLite(args.Daemon.Database, logger, args.Daemon.DryRun)
@@ -63,44 +61,6 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 	<-ctx.Done()
 
 	return nil
-}
-
-func parseAddress(addrStr string) (listenAddress, error) {
-	// Split the input string into protocol and address using "://"
-	parts := strings.SplitN(addrStr, "://", 2)
-	if len(parts) != 2 {
-		return listenAddress{}, fmt.Errorf("invalid address format, missing protocol separator '://'")
-	}
-
-	protocol := parts[0]
-	address := parts[1]
-
-	// Validate the protocol
-	if protocol != "tcp" && protocol != "unix" {
-		return listenAddress{}, fmt.Errorf("invalid protocol '%s', must be 'tcp' or 'unix'", protocol)
-	}
-
-	// Validate the address based on the protocol
-	if protocol == "tcp" {
-		// For TCP, the address must be in host:port format
-		host, port, err := net.SplitHostPort(address)
-		if err != nil {
-			return listenAddress{}, fmt.Errorf("invalid tcp address '%s': %v", address, err)
-		}
-		if host == "" || port == "" {
-			return listenAddress{}, fmt.Errorf("tcp address must include both host and port")
-		}
-	} else {
-		// For Unix, the address must be a non-empty socket file path
-		if strings.TrimSpace(address) == "" {
-			return listenAddress{}, fmt.Errorf("unix address must be a non-empty socket file path")
-		}
-	}
-
-	return listenAddress{
-		Protocol: protocol,
-		Address:  address,
-	}, nil
 }
 
 func addSyncJobsFromConfig(
