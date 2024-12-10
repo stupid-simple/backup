@@ -90,14 +90,11 @@ go build -o ssbak
 
 ### Container
 
-The container image uses alpine. To build the binary is necessary to use musl or build the binary statically.
-The easiest way is to build it using a container image with Docker.
+The container image uses alpine. To build the container is necessary to build the binary statically.
 
 ```shell
 # Build docker image for compilation.
-docker build -f .build/alpine.Dockerfile -t ssbak-builder .
-# Run container go builder.
-docker run -v `pwd`:/out --rm ssbak-builder
+CGO_ENABLED=0 go build -o ssbak .
 # Build ssbak container.
 docker build -t ghcr.io/stupid-simple/backup .
 ```
