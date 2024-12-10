@@ -3,7 +3,8 @@ package main
 import "github.com/i-segura/snapsync/config"
 
 type Command struct {
-	Backup struct {
+	Version struct{} `cmd:"" help:"Print version information."`
+	Backup  struct {
 		Source            string              `help:"source directory path" short:"s" required:""`
 		Dest              string              `help:"destination directory path" short:"D" required:""`
 		Database          string              `help:"database path" short:"d" required:""`

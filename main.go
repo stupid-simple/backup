@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +11,8 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog"
 )
+
+var Version = "dev"
 
 func newLogger() zerolog.Logger {
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: false, TimeFormat: time.RFC3339}
@@ -42,7 +45,9 @@ func main() {
 	args := Command{}
 	cli := kong.Parse(&args,
 		kong.Name("ssbak"),
-		kong.Description("Stupid Simple Backup"),
+		kong.Description(
+			fmt.Sprintf("Stupid Simple Backup. Version: %s", Version),
+		),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -51,6 +56,9 @@ func main() {
 
 	logger := newLogger()
 	switch cli.Command() {
+	case "version":
+		fmt.Printf("%s\n", Version)
+		cli.Exit(0)
 	case "backup":
 		err := backupCommand(ctx, args, logger)
 		if err != nil {
