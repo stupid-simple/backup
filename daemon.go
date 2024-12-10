@@ -173,6 +173,7 @@ func configSourceToBackupJob(
 		destPath:          cfgSource.ArchiveDir,
 		dryRun:            dryRun,
 		archivePrefix:     cfgSource.ArchivePrefix,
+		maxFileBytes:      cfgSource.ArchiveMaxFileSize.Size,
 		includeLargeFiles: cfgSource.ArchiveIncludeLargeFiles,
 		db:                db,
 		logger:            logger,
