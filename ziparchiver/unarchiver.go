@@ -68,15 +68,23 @@ func Restore(ctx context.Context, assets <-chan asset.ArchivedAsset, logger zero
 	return nil
 }
 
-func restoreAsset(f fs.File, asset asset.Asset, logger zerolog.Logger, overwrite bool, dryRun bool) (int64, error) {
-	if _, err := os.Stat(asset.Path()); err == nil {
+func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, overwrite bool, dryRun bool) (int64, error) {
+	if info, err := os.Stat(asset.Path()); err == nil {
 		logger.Debug().Str("path", asset.Path()).Msg("found existing file")
+
+		if info.IsDir() {
+			return 0, errors.New("file is a directory")
+		}
+
+		if info.ModTime().Compare(asset.ModTime()) == 0 && info.Size() == asset.Size() {
+			return 0, errSkippedSameFile
+		}
 
 		storedFileHash, err := fileutils.ComputeFileHash(asset.Path())
 		if err != nil {
 			return 0, err
 		}
-		if storedFileHash != asset.Hash() && overwrite {
+		if storedFileHash != asset.ComputedHash() && overwrite {
 			logger.Info().Str("path", asset.Path()).Msg("found existing file, overwriting")
 			if dryRun {
 				return 0, nil
@@ -93,9 +101,10 @@ func restoreAsset(f fs.File, asset asset.Asset, logger zerolog.Logger, overwrite
 			defer w.Close()
 
 			return io.Copy(w, f)
-		} else if storedFileHash != asset.Hash() {
+		} else if storedFileHash != asset.ComputedHash() {
 			return 0, errSkippedModified
 		} else {
+			// Should be unreachable.
 			return 0, errSkippedSameFile
 		}
 	} else if os.IsNotExist(err) {

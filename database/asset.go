@@ -18,7 +18,7 @@ func (d dbAsset) ArchivePath() string {
 	return d.record.Archive.Path
 }
 
-func (d dbAsset) Hash() uint64 {
+func (d dbAsset) ComputedHash() uint64 {
 	return uint64(d.record.Hash)
 }
 

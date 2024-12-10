@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -15,15 +14,12 @@ func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (
 		var scannedCount int
 		var statFiles int
 
-		startTime := time.Now()
 		logger.Info().Str("path", dirPath).Msg("start scanning for assets")
 		defer func() {
-			tookSeconds := time.Since(startTime).Seconds()
 			logger.Info().
 				Int("scanned", statFiles).
 				Int("scanned_success", scannedCount).
 				Str("dir", dirPath).
-				Float64("seconds", tookSeconds).
 				Msgf("done scanning assets")
 		}()
 		defer close(scannedCh)

@@ -33,9 +33,6 @@ func TestNewFromFS(t *testing.T) {
 	if a.Path() != testPath {
 		t.Errorf("expected path %s, got %s", testPath, a.Path())
 	}
-	if a.Hash() != 0x45ab6734b21e6968 {
-		t.Errorf("expected hash 0x45ab6734b21e6968, got %x", a.Hash())
-	}
 	if a.Size() != 11 {
 		t.Errorf("expected size 11, got %d", a.Size())
 	}

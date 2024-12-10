@@ -148,11 +148,11 @@ type testAsset struct {
 	hash uint64
 }
 
-func (a *testAsset) Path() string       { return a.path }
-func (a *testAsset) Hash() uint64       { return a.hash }
-func (a *testAsset) Name() string       { return "name_" + a.path }
-func (a *testAsset) Size() int64        { return 1000 }
-func (a *testAsset) ModTime() time.Time { return time.Now() }
+func (a *testAsset) Path() string         { return a.path }
+func (a *testAsset) ComputedHash() uint64 { return a.hash }
+func (a *testAsset) Name() string         { return "name_" + a.path }
+func (a *testAsset) Size() int64          { return 1000 }
+func (a *testAsset) ModTime() time.Time   { return time.Now() }
 func (a *testAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("path", a.path).Uint64("hash", a.hash)
 }

@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/i-segura/snapsync/asset"
+	"github.com/i-segura/snapsync/fileutils"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
@@ -184,7 +186,16 @@ func (m BackupSource) findMissingAssetsInBatches(
 				continue
 			}
 
-			if a.Hash() != uint64(archivedAsset.Hash) {
+			ok, err := isAssetModified(a, archivedAsset)
+			if err != nil {
+				m.db.Logger.
+					Error().
+					Err(err).
+					Object("asset", a).
+					Msg("could not compare assets. Skipping...")
+				continue
+			}
+			if ok {
 				m.db.Logger.Info().Object("asset", a).Msg("asset was modified")
 				countModified++
 				*missing = append(*missing, a)
@@ -238,7 +249,7 @@ func (d BackupSource) recordAssetsInBatches(ctx context.Context, from <-chan ass
 					},
 					Path:    a.Path(),
 					Size:    a.Size(),
-					Hash:    int64(a.Hash()),
+					Hash:    int64(a.ComputedHash()),
 					ModTime: a.ModTime(),
 					Name:    a.Name(),
 				}).Error; err != nil {
@@ -272,6 +283,27 @@ func registerNewArchive(tx *gorm.DB, archivePath string, sourcePath string) (*Ar
 		return nil, err
 	}
 	return &archive, nil
+}
+
+func isAssetModified(asset asset.Asset, archivedAsset *ArchiveAsset) (bool, error) {
+	if asset.Path() != archivedAsset.Path {
+		return false, fmt.Errorf("assets paths differ, %s / %s", asset.Path(), archivedAsset.Path)
+	}
+
+	if asset.ModTime().Compare(archivedAsset.ModTime) == 0 && asset.Size() == archivedAsset.Size {
+		return false, nil
+	}
+
+	h, err := fileutils.ComputeFileHash(asset.Path())
+	if err != nil {
+		return false, nil
+	}
+
+	if h == uint64(archivedAsset.Hash) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // Reads size elements from the channel until it is closed or the context is cancelled.

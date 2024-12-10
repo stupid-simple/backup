@@ -24,8 +24,7 @@ func (z *zipAsset) ArchivePath() string {
 	return z.archivePath
 }
 
-// Hash implements asset.Asset.
-func (z *zipAsset) Hash() uint64 {
+func (z *zipAsset) ComputedHash() uint64 {
 	return z.hash
 }
 

@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"time"
 
-	"github.com/i-segura/snapsync/fileutils"
 	"github.com/rs/zerolog"
 )
 
@@ -22,14 +21,8 @@ func NewFromFS(path string, info fs.FileInfo) (Asset, error) {
 		return nil, fmt.Errorf("%w: current size %d, maximum %d", ErrMaxSizeExceeded, info.Size(), fourGiB)
 	}
 
-	hash, err := fileutils.ComputeFileHash(path)
-	if err != nil {
-		return nil, err
-	}
-
 	asset := &fsAsset{
 		path: path,
-		hash: hash,
 		info: info,
 	}
 
@@ -38,7 +31,6 @@ func NewFromFS(path string, info fs.FileInfo) (Asset, error) {
 
 type fsAsset struct {
 	path string
-	hash uint64
 	info fs.FileInfo
 }
 
@@ -61,13 +53,7 @@ func (a *fsAsset) ModTime() time.Time {
 func (a *fsAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("path", a.path)
 	e.Str("name", a.info.Name())
-	e.Uint64("hash", a.hash)
 	e.Int64("size", a.info.Size())
-}
-
-// Checksum implements Asset.
-func (a *fsAsset) Hash() uint64 {
-	return a.hash
 }
 
 // Path implements Asset.

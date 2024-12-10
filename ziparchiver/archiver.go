@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/i-segura/snapsync/asset"
+	"github.com/i-segura/snapsync/fileutils"
 	"github.com/i-segura/snapsync/ziparchiver/zipwriter"
 	"github.com/rs/zerolog"
 )
@@ -181,16 +182,19 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 		logger.Debug().Object("asset", asset).Float64("seconds", tookSeconds).Msg("archived asset")
 	}()
 
-	_, err = io.Copy(w, assetFile)
+	// Write to zip as well as compute hash.
+	tee := io.TeeReader(assetFile, w)
+	h, err := fileutils.ComputeHash(tee)
 	if err != nil {
 		return nil, err
 	}
+
 	return &zipAsset{
 		sourcePath:       sourcePath,
 		archivePath:      archivePath,
 		name:             asset.Name(),
 		path:             asset.Path(),
-		hash:             asset.Hash(),
+		hash:             h,
 		modTime:          asset.ModTime(),
 		uncompressedSize: asset.Size(),
 	}, nil
