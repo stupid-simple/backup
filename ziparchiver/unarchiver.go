@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
 	"time"
@@ -20,7 +21,7 @@ var (
 	errSkippedModified = errors.New("skipped modified file")
 )
 
-func Restore(ctx context.Context, assets <-chan asset.ArchivedAsset, logger zerolog.Logger, opts ...RestoreOption) error {
+func Restore(ctx context.Context, assets iter.Seq[asset.ArchivedAsset], logger zerolog.Logger, opts ...RestoreOption) error {
 	o := restoreOptions{}
 	for _, applyOpts := range opts {
 		applyOpts(&o)

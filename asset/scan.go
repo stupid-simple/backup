@@ -3,15 +3,15 @@ package asset
 import (
 	"context"
 	"io/fs"
+	"iter"
 	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog"
 )
 
-func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (<-chan Asset, error) {
-	scannedCh := make(chan Asset)
-	go func() {
+func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (iter.Seq[Asset], error) {
+	return func(yield func(Asset) bool) {
 		var scannedCount int
 		var statFiles int
 
@@ -24,7 +24,6 @@ func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (
 				Str("dir", dirPath).
 				Msgf("done scanning assets")
 		}()
-		defer close(scannedCh)
 
 		throttledLogger := logger.Sample(&zerolog.BurstSampler{
 			Burst:  1,
@@ -60,7 +59,9 @@ func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (
 				return nil
 			}
 
-			scannedCh <- newAsset
+			if !yield(newAsset) {
+				return filepath.SkipAll
+			}
 			scannedCount++
 			logger.Debug().Object("asset", newAsset).Msg("scanned asset")
 			throttledLogger.Info().
@@ -73,7 +74,5 @@ func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (
 		if err != nil {
 			logger.Error().Err(err).Str("path", dirPath).Msg("could not scan path")
 		}
-	}()
-
-	return scannedCh, nil
+	}, nil
 }

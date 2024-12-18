@@ -2,6 +2,7 @@ package ziparchiver
 
 import (
 	"context"
+	"iter"
 
 	"github.com/stupid-simple/backup/asset"
 )
@@ -37,7 +38,7 @@ func WithIncludeLargeFiles(skipLargeFiles bool) StoreOption {
 }
 
 type RegisterArchivedAssets interface {
-	Register(ctx context.Context, assets <-chan asset.ArchivedAsset) error
+	Register(ctx context.Context, assets iter.Seq[asset.ArchivedAsset]) error
 }
 
 // Register the assets stored in the archive.
@@ -48,7 +49,7 @@ func WithRegisterArchivedAssets(register RegisterArchivedAssets) StoreOption {
 }
 
 type OnlyNewAssets interface {
-	FindMissingAssets(ctx context.Context, from <-chan asset.Asset) (<-chan asset.Asset, error)
+	FindMissingAssets(ctx context.Context, from iter.Seq[asset.Asset]) (iter.Seq[asset.Asset], error)
 }
 
 func WithOnlyNewAssets(only OnlyNewAssets) StoreOption {

@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -62,12 +63,12 @@ func TestBackupSource_FindMissingAssets(t *testing.T) {
 	// Populate archive with one existing asset
 	registerArchivedAsset(t, db, "test/source/path", "archive1", "existing/path1", 100)
 
-	assetChan := make(chan asset.Asset, 2)
-	assetChan <- newTestAsset("existing/path1", 100)
-	assetChan <- newTestAsset("missing/path2", 200)
-	close(assetChan)
+	assets := []asset.Asset{
+		newTestAsset("existing/path1", 100),
+		newTestAsset("missing/path2", 200),
+	}
 
-	out, err := source.FindMissingAssets(ctx, assetChan)
+	out, err := source.FindMissingAssets(ctx, slices.Values(assets))
 	require.NoError(t, err)
 
 	var missingAssets []asset.Asset
@@ -84,12 +85,12 @@ func TestBackupSource_Register(t *testing.T) {
 	source, err := db.GetSource(ctx, "test/source/path")
 	require.NoError(t, err)
 
-	archivedAssetsChan := make(chan asset.ArchivedAsset, 2)
-	archivedAssetsChan <- newTestArchivedAsset("test/source/path", "archive1", "path1", 123)
-	archivedAssetsChan <- newTestArchivedAsset("test/source/path", "archive2", "path2", 456)
-	close(archivedAssetsChan)
+	archivedAssets := []asset.ArchivedAsset{
+		newTestArchivedAsset("test/source/path", "archive1", "path1", 123),
+		newTestArchivedAsset("test/source/path", "archive2", "path2", 456),
+	}
 
-	err = source.Register(ctx, archivedAssetsChan)
+	err = source.Register(ctx, slices.Values(archivedAssets))
 	require.NoError(t, err)
 
 	var assets []database.ArchiveAsset

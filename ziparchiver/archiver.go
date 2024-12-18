@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"iter"
 	"os"
 	"path/filepath"
 	"sync"
@@ -25,7 +26,7 @@ func StoreAssets(
 	ctx context.Context,
 	sourcePath string,
 	dest ArchiveDescriptor,
-	assets <-chan asset.Asset,
+	assets iter.Seq[asset.Asset],
 	logger zerolog.Logger,
 	opts ...StoreOption,
 ) error {
@@ -69,7 +70,7 @@ func StoreAssets(
 
 		wg.Add(1)
 		go func() {
-			err := o.registerAssets.Register(ctx, storedCh)
+			err := o.registerAssets.Register(ctx, iterChannel(ctx, storedCh))
 			if err != nil {
 				logger.Error().Err(err).Msg("could not register backup assets")
 				// Drain the channel.
@@ -93,7 +94,7 @@ func writeAssetsToZip(
 	ctx context.Context,
 	sourcePath string,
 	fullPrefix string,
-	assets <-chan asset.Asset,
+	assets iter.Seq[asset.Asset],
 	onArchived func(asset.ArchivedAsset),
 	logger zerolog.Logger,
 	o storeOptions,
@@ -206,4 +207,22 @@ func newZipFilePart(fullPrefix string, part int) *zipwriter.ZipFile {
 		return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.zip", fullPrefix))
 	}
 	return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.%d.zip", fullPrefix, part))
+}
+
+func iterChannel[T any](ctx context.Context, ch <-chan T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-ch:
+				if !ok {
+					return
+				}
+				if !yield(item) {
+					return
+				}
+			}
+		}
+	}
 }

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -25,12 +26,10 @@ func (bs *BackupSource) Path() string {
 
 func (bs *BackupSource) FindMissingAssets(
 	ctx context.Context,
-	from <-chan asset.Asset,
-) (<-chan asset.Asset, error) {
-	out := make(chan asset.Asset)
-	go func() {
+	from iter.Seq[asset.Asset],
+) (iter.Seq[asset.Asset], error) {
+	return func(yield func(asset.Asset) bool) {
 		bs.logger.Info().Msg("finding new or modified assets to backup")
-		defer close(out)
 		missing := []asset.Asset{}
 		bs.findMissingAssetsInBatches(
 			ctx,
@@ -44,21 +43,20 @@ func (bs *BackupSource) FindMissingAssets(
 				}
 
 				for _, a := range missing {
-					select {
-					case <-ctx.Done():
+					if ctx.Err() != nil {
 						return nil
-					case out <- a:
+					}
+					if !yield(a) {
+						return nil
 					}
 				}
 
 				return nil
 			})
-	}()
-
-	return out, nil
+	}, nil
 }
 
-func (bs *BackupSource) Register(ctx context.Context, from <-chan asset.ArchivedAsset) error {
+func (bs *BackupSource) Register(ctx context.Context, from iter.Seq[asset.ArchivedAsset]) error {
 
 	bs.logger.Info().Msg("register backup assets")
 
@@ -81,11 +79,8 @@ func (bs *BackupSource) Register(ctx context.Context, from <-chan asset.Archived
 	return nil
 }
 
-func (bs *BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.ArchivedAsset, error) {
-	out := make(chan asset.ArchivedAsset)
-
-	go func() {
-		defer close(out)
+func (bs *BackupSource) FindArchivedAssets(ctx context.Context) (iter.Seq[asset.ArchivedAsset], error) {
+	return func(yield func(asset.ArchivedAsset) bool) {
 		offset := 0
 		for {
 			assets := []ArchiveAsset{}
@@ -118,22 +113,21 @@ func (bs *BackupSource) FindArchivedAssets(ctx context.Context) (<-chan asset.Ar
 				return
 			}
 			for i := range assets {
-				select {
-				case <-ctx.Done():
+				if ctx.Err() != nil {
 					return
-				case out <- dbAsset{&assets[i]}:
+				}
+				if !yield(dbAsset{&assets[i]}) {
+					return
 				}
 			}
 			offset += iterateBatchSize
 		}
-	}()
-
-	return out, nil
+	}, nil
 }
 
 func (bs *BackupSource) findMissingAssetsInBatches(
 	ctx context.Context,
-	from <-chan asset.Asset,
+	from iter.Seq[asset.Asset],
 	batchSize int,
 	missing *[]asset.Asset,
 	onBatch func(err error) error,
@@ -141,6 +135,9 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 	bs.logger.Info().Msg("start finding missing assets in batches")
 
 	var countModified, countNew int
+
+	nextAsset, stop := iter.Pull(from)
+	defer stop()
 	defer func() {
 		if ctx.Err() != nil {
 			bs.logger.Info().Str("source", bs.record.Path).Msg("cancelled finding assets")
@@ -172,10 +169,18 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		if ctx.Err() != nil {
 			break
 		}
-		eoc := consumeN(ctx, batchSize, from, func(a asset.Asset) {
+		eit := false
+		for range batchSize {
+			var a asset.Asset
+			a, eit = nextAsset()
+			if !eit {
+				break
+			}
+
 			findBatch = append(findBatch, a)
 			lookForPaths = append(lookForPaths, a.Path())
-		})
+		}
+
 		if len(findBatch) == 0 {
 			break
 		}
@@ -232,7 +237,7 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		findBatch = []asset.Asset{}
 		lookForPaths = []string{}
 
-		if eoc {
+		if eit {
 			break
 		}
 	}
@@ -240,22 +245,34 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 
 func (bs *BackupSource) recordAssetsInBatches(
 	ctx context.Context,
-	from <-chan asset.ArchivedAsset,
+	from iter.Seq[asset.ArchivedAsset],
 	logger zerolog.Logger,
 ) (int, error) {
 	var countRecorded int
+
+	nextAsset, stop := iter.Pull(from)
+	defer stop()
 	for {
 		if ctx.Err() != nil {
 			break
 		}
 
 		archiveAssets := make([]asset.ArchivedAsset, 0, iterateBatchSize)
-		eoc := consumeN(ctx, iterateBatchSize, from, func(a asset.ArchivedAsset) {
+
+		eit := false
+		for range iterateBatchSize {
+			var a asset.ArchivedAsset
+			a, eit = nextAsset()
+			if !eit {
+				break
+			}
 			if a.SourcePath() != bs.record.Path {
 				logger.Warn().Object("asset", a).Msg("skipping asset from different source")
+				continue
 			}
+
 			archiveAssets = append(archiveAssets, a)
-		})
+		}
 
 		if len(archiveAssets) == 0 {
 			break
@@ -290,23 +307,12 @@ func (bs *BackupSource) recordAssetsInBatches(
 
 		logger.Debug().Msg("done record archive assets batch")
 
-		if eoc {
+		if eit {
 			break
 		}
 	}
 
 	return countRecorded, nil
-}
-
-func registerNewArchive(tx *gorm.DB, archivePath string, sourcePath string) (*Archive, error) {
-	archive := Archive{
-		Path:       archivePath,
-		SourcePath: sourcePath,
-	}
-	if err := tx.Create(&archive).Error; err != nil {
-		return nil, err
-	}
-	return &archive, nil
 }
 
 func isAssetModified(asset asset.Asset, archivedAsset *ArchiveAsset) (bool, error) {
@@ -328,21 +334,4 @@ func isAssetModified(asset asset.Asset, archivedAsset *ArchiveAsset) (bool, erro
 	}
 
 	return true, nil
-}
-
-// Reads size elements from the channel until it is closed or the context is cancelled.
-// Returns true if there are no more elements in the channel or the context is cancelled.
-func consumeN[T any](ctx context.Context, size int, ch <-chan T, on func(v T)) bool {
-	for i := 0; i < size; i++ {
-		select {
-		case <-ctx.Done():
-			return true
-		case v, ok := <-ch:
-			if !ok {
-				return true
-			}
-			on(v)
-		}
-	}
-	return false
 }
