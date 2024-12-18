@@ -1,8 +1,6 @@
 module github.com/stupid-simple/backup
 
-go 1.22.7
-
-toolchain go1.22.9
+go 1.23
 
 require (
 	github.com/alecthomas/kong v1.0.0
