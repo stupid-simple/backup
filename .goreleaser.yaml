@@ -17,17 +17,6 @@ builds:
     ldflags:
       - -X "main.Version={{ .Tag }}"
     binary: ssbak
-  - id: ssbak-static
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    env:
-      - CGO_ENABLED=0
-    ldflags:
-      - -X "main.Version={{ .Tag }}"
-    binary: ssbak
 
 archives:
   - builds:
@@ -41,7 +30,7 @@ checksum:
 
 dockers:
   - ids:
-      - ssbak-static
+      - ssbak
     image_templates:
       - "ghcr.io/stupid-simple/backup:{{ .Tag }}-amd64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}-amd64"
@@ -55,7 +44,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
   - ids:
-      - ssbak-static
+      - ssbak
     image_templates:
       - "ghcr.io/stupid-simple/backup:{{ .Tag }}-arm64"
       - "ghcr.io/stupid-simple/backup:v{{ .Major }}-arm64"
