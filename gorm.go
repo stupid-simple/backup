@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/rs/zerolog"
 	"github.com/stupid-simple/backup/database"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
