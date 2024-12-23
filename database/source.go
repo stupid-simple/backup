@@ -47,6 +47,7 @@ func (bs *BackupSource) FindMissingAssets(
 						return nil
 					}
 					if !yield(a) {
+						bs.logger.Debug().Object("asset", a).Msg("cancelled finding missing assets")
 						return nil
 					}
 				}
@@ -159,7 +160,8 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		Burst:  1,
 		Period: 1 * time.Second,
 	})
-	for {
+	hasNext := true
+	for hasNext {
 		throttledLogger.Info().
 			Int("batch_size", batchSize).
 			Int("batch", len(findBatch)).
@@ -169,11 +171,11 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		if ctx.Err() != nil {
 			break
 		}
-		eit := false
 		for range batchSize {
 			var a asset.Asset
-			a, eit = nextAsset()
-			if !eit {
+			a, hasNext = nextAsset()
+			if !hasNext {
+				bs.logger.Debug().Msg("no more assets to find")
 				break
 			}
 
@@ -236,10 +238,6 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		*missing = []asset.Asset{}
 		findBatch = []asset.Asset{}
 		lookForPaths = []string{}
-
-		if eit {
-			break
-		}
 	}
 }
 
@@ -252,18 +250,18 @@ func (bs *BackupSource) recordAssetsInBatches(
 
 	nextAsset, stop := iter.Pull(from)
 	defer stop()
-	for {
+	hasNext := true
+	for hasNext {
 		if ctx.Err() != nil {
 			break
 		}
 
 		archiveAssets := make([]asset.ArchivedAsset, 0, iterateBatchSize)
 
-		eit := false
 		for range iterateBatchSize {
 			var a asset.ArchivedAsset
-			a, eit = nextAsset()
-			if !eit {
+			a, hasNext = nextAsset()
+			if !hasNext {
 				break
 			}
 			if a.SourcePath() != bs.record.Path {
@@ -306,10 +304,6 @@ func (bs *BackupSource) recordAssetsInBatches(
 		}
 
 		logger.Debug().Msg("done record archive assets batch")
-
-		if eit {
-			break
-		}
 	}
 
 	return countRecorded, nil
