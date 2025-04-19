@@ -1,4 +1,9 @@
-# `ssbak` = Stupid Simple Backup 
+# `ssbak` = Stupid Simple Backup
+
+[![CI](https://github.com/stupid-simple/backup/actions/workflows/ci.yml/badge.svg)](https://github.com/stupid-simple/backup/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/stupid-simple/backup/branch/main/graph/badge.svg)](https://codecov.io/gh/stupid-simple/backup)
+[![Go Report Card](https://goreportcard.com/badge/github.com/stupid-simple/backup)](https://goreportcard.com/report/github.com/stupid-simple/backup)
+[![Go Reference](https://pkg.go.dev/badge/github.com/stupid-simple/backup.svg)](https://pkg.go.dev/github.com/stupid-simple/backup)
 
 ## Description
 
@@ -27,7 +32,7 @@ Parameters:
     - `source_dir`: The source directory. The directory and its subdirectories will be scanned for regular files to backup.
     - `archive_dir`: The target directory where backup archives will be generated.
     - `enable`: Whether to schedule this backup.
-    - `cron`: The schedule in UNIX cron format. 
+    - `cron`: The schedule in UNIX cron format.
     - (optional) `archive_prefix`: This will be appended to the name of generated archive files.
     - (optional) `archive_max_sum_size`: The maximum bytes that sum the files being written into archives. This is before compression. Is written in units. Example: "32", "32b", "32K", "32Gb"...
     - (optional) `archive_include_large_files`: Default is false. Include files greater than `archive_max_sum_size` even if the compressed archive can end up greater than this size.
@@ -87,6 +92,28 @@ that should be restored.
 ```shell
 go build -o ssbak
 ```
+
+## Test
+
+```shell
+go test -race ./...
+```
+
+### Coverage
+
+```shell
+go test -race -coverprofile=coverage.out -covermode=atomic ./...
+go tool cover -html=coverage.out -o coverage.html
+```
+
+## Lint
+
+> Requires [golangci-lint](https://golangci-lint.run/welcome/install/).
+
+```shell
+golangci-lint run
+```
+
 
 ### Container
 
