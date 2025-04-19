@@ -31,9 +31,9 @@ func WithMaxFileBytes(maxFileBytes int64) StoreOption {
 }
 
 // If true, files larger than maxFileBytes will be stored.
-func WithIncludeLargeFiles(skipLargeFiles bool) StoreOption {
+func WithIncludeLargeFiles(include bool) StoreOption {
 	return func(o *storeOptions) {
-		o.includeLargeFiles = skipLargeFiles
+		o.includeLargeFiles = include
 	}
 }
 
