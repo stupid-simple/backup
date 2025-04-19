@@ -17,7 +17,9 @@ func TestScanDirectory(t *testing.T) {
 	// Setup temp directory for tests
 	tempDir, err := os.MkdirTemp("", "asset-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	// Create a few test files
 	testFiles := []string{
@@ -112,7 +114,9 @@ func TestScanDirectoryErrors(t *testing.T) {
 	// Mock a directory with permission issues
 	tempDir, err := os.MkdirTemp("", "asset-test-perm-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	// Create a file we can't read
 	restrictedFile := filepath.Join(tempDir, "restricted.txt")

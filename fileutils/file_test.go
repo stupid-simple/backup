@@ -14,8 +14,13 @@ func TestExists(t *testing.T) {
 		t.Fatalf("Failed to create temporary file: %v", err)
 	}
 	tmpFilePath := tmpFile.Name()
-	defer os.Remove(tmpFilePath) // Clean up after test
-	tmpFile.Close()
+	defer func() {
+		_ = os.Remove(tmpFilePath) // Clean up after test
+	}()
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temporary file: %v", err)
+	}
 
 	// Test cases
 	tests := []struct {

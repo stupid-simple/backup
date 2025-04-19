@@ -66,10 +66,10 @@ func TestWatchFile_Changed(t *testing.T) {
 
 	_, err = f.Write(data)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	notify <- struct{}{}
 

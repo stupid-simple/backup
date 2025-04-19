@@ -98,10 +98,14 @@ func createTestArchive(t *testing.T, sourceDir, archiveDir string) (string, map[
 	if err != nil {
 		t.Fatalf("Failed to create archive file: %v", err)
 	}
-	defer archive.Close()
+	defer func() {
+		_ = archive.Close()
+	}()
 
 	zipWriter := zip.NewWriter(archive)
-	defer zipWriter.Close()
+	defer func() {
+		_ = zipWriter.Close()
+	}()
 
 	// Add files to the archive.
 	for _, f := range files {
@@ -150,9 +154,11 @@ func createTestArchive(t *testing.T, sourceDir, archiveDir string) (string, map[
 // Test basic restoration functionality
 func TestRestore_Basic(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -209,9 +215,11 @@ func TestRestore_Basic(t *testing.T) {
 
 func TestRestore_DryRun(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -256,9 +264,11 @@ func TestRestore_DryRun(t *testing.T) {
 
 func TestRestore_ExistingIdenticalFiles(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -337,9 +347,11 @@ func TestRestore_ExistingIdenticalFiles(t *testing.T) {
 
 func TestRestore_ExistingModifiedFiles(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -431,9 +443,11 @@ func TestRestore_ExistingModifiedFiles(t *testing.T) {
 
 func TestRestore_ContextCancellation(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -488,9 +502,11 @@ func TestRestore_ContextCancellation(t *testing.T) {
 
 func TestRestore_InvalidArchivePath(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	_, assets := createTestArchive(t, sourceDir, archiveDir)
 
@@ -546,9 +562,11 @@ func TestRestore_InvalidArchivePath(t *testing.T) {
 
 func TestRestore_TargetIsDirectory(t *testing.T) {
 	sourceDir, targetDir, archiveDir := setupTestEnvironment(t)
-	defer os.RemoveAll(sourceDir)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(archiveDir)
+	defer func() {
+		_ = os.RemoveAll(sourceDir)
+		_ = os.RemoveAll(targetDir)
+		_ = os.RemoveAll(archiveDir)
+	}()
 
 	archivePath, assets := createTestArchive(t, sourceDir, archiveDir)
 

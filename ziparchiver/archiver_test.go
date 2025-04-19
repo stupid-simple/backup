@@ -25,7 +25,6 @@ type MockAsset struct {
 	name    string
 	size    int64
 	modTime time.Time
-	content string
 }
 
 func (m *MockAsset) Path() string       { return m.path }
@@ -209,7 +208,9 @@ func TestStoreAssets_WithFiltering(t *testing.T) {
 
 	r, err := zip.OpenReader(filepath.Join(destDir, files[0].Name()))
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	assert.Len(t, r.File, 1, "Zip should contain only small assets")
 	assert.Equal(t, "file0.txt", filepath.Base(r.File[0].Name), "Should only contain the smallest file")
@@ -349,7 +350,9 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 
 	r, err := zip.OpenReader(excludeZipPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	assert.Len(t, r.File, 1, "Should only include the small file")
 	assert.Equal(t, "small.txt", filepath.Base(r.File[0].Name), "Should be the small file")
@@ -381,7 +384,7 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 		r, err := zip.OpenReader(zipPath)
 		require.NoError(t, err)
 		totalFiles += len(r.File)
-		r.Close()
+		_ = r.Close()
 	}
 
 	assert.Equal(t, 2, totalFiles, "Should include both files across all zips")
@@ -491,7 +494,9 @@ func TestStoreAssets_Cancellation(t *testing.T) {
 	// Verify the zip contains fewer than all assets.
 	r, err := zip.OpenReader(filepath.Join(destDir, files[0].Name()))
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	assert.Less(t, len(r.File), count, "Should contain fewer than all assets due to cancellation")
 }

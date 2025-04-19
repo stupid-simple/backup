@@ -15,7 +15,9 @@ func TestNewLazyZipFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	zipPath := filepath.Join(tempDir, "test.zip")
 	zipFile := zipwriter.NewLazyZipFile(zipPath)
@@ -64,7 +66,9 @@ func TestNewLazyZipFile_ExistingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	zipPath := filepath.Join(tempDir, "existing.zip")
 
