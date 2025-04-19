@@ -50,9 +50,6 @@ func (z *ZipFile) Close() error {
 	if !z.init {
 		return nil
 	}
-	defer func() {
-		z.init = false
-	}()
 	err := z.writer.Close()
 	return errors.Join(err, z.file.Close())
 }
