@@ -1,6 +1,7 @@
 package fileutils
 
 import (
+	"errors"
 	"io"
 	"os"
 
@@ -20,11 +21,19 @@ func ComputeHash(r io.Reader) (uint64, error) {
 
 // ComputeFileHash returns the hash of the file at path.
 func ComputeFileHash(path string) (uint64, error) {
+	var err error
 	file, err := os.Open(path)
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
 
-	return ComputeHash(file)
+	defer func() {
+		closeErr := file.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	var hash uint64
+	hash, err = ComputeHash(file)
+
+	return hash, err
 }

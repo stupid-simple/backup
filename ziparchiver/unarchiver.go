@@ -46,7 +46,12 @@ func Restore(ctx context.Context, assets iter.Seq[asset.ArchivedAsset], logger z
 	}()
 
 	zipFile := Open()
-	defer zipFile.Close()
+	defer func() {
+		err := zipFile.Close()
+		if err != nil {
+			logger.Warn().Err(err).Msg("failed to close zip file")
+		}
+	}()
 
 	throttledLogger := logger.Sample(&zerolog.BurstSampler{
 		Burst:  1,
@@ -62,7 +67,12 @@ func Restore(ctx context.Context, assets iter.Seq[asset.ArchivedAsset], logger z
 			logger.Warn().Err(err).Object("asset", asset).Msg("could not restore asset")
 			continue
 		}
-		defer f.Close()
+		defer func() {
+			err := f.Close()
+			if err != nil {
+				logger.Warn().Err(err).Msg("failed to close file")
+			}
+		}()
 
 		size, err := restoreAsset(f, asset, logger, false, o.dryRun)
 		if errors.Is(err, errSkippedSameFile) {
@@ -117,7 +127,12 @@ func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, o
 			if err != nil {
 				return 0, err
 			}
-			defer w.Close()
+			defer func() {
+				err := w.Close()
+				if err != nil {
+					logger.Warn().Err(err).Msg("failed to close file")
+				}
+			}()
 
 			return io.Copy(w, f)
 		} else if storedFileHash != asset.ComputedHash() {
@@ -140,7 +155,12 @@ func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, o
 		if err != nil {
 			return 0, err
 		}
-		defer w.Close()
+		defer func() {
+			err := w.Close()
+			if err != nil {
+				logger.Warn().Err(err).Msg("failed to close file")
+			}
+		}()
 
 		return io.Copy(w, f)
 	} else {

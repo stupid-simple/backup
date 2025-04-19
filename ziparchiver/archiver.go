@@ -179,7 +179,9 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 	}
 	startTime := time.Now()
 	defer func() {
-		assetFile.Close()
+		if err := assetFile.Close(); err != nil {
+			logger.Warn().Err(err).Msg("failed to close asset file")
+		}
 		tookSeconds := time.Since(startTime).Seconds()
 		logger.Debug().Object("asset", asset).Float64("seconds", tookSeconds).Msg("archived asset")
 	}()

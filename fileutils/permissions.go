@@ -8,7 +8,10 @@ func VerifyWritable(dirPath string) error {
 	if err != nil {
 		return err
 	}
-	fil.Close()
+	err = fil.Close()
+	if err != nil {
+		return err
+	}
 	err = os.Remove(fil.Name())
 	if err != nil {
 		return err

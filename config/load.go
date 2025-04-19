@@ -10,7 +10,9 @@ func LoadFromFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cfgFile.Close()
+	defer func() {
+		_ = cfgFile.Close()
+	}()
 
 	raw, err := os.ReadFile(path)
 	if err != nil {

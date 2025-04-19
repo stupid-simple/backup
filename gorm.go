@@ -27,7 +27,10 @@ func newSQLite(path string, logger zerolog.Logger, dryRun bool) (*gorm.DB, error
 		return nil, err
 	}
 
-	cli.AutoMigrate(&database.Source{}, &database.Archive{}, &database.ArchiveAsset{})
+	err = cli.AutoMigrate(&database.Source{}, &database.Archive{}, &database.ArchiveAsset{})
+	if err != nil {
+		return nil, err
+	}
 
 	return cli, nil
 }

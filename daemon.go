@@ -12,11 +12,6 @@ import (
 	"github.com/stupid-simple/backup/scheduler"
 )
 
-type listenAddress struct {
-	Protocol string
-	Address  string
-}
-
 func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
 	if args.Daemon.DryRun {
 		logger = logger.With().Bool("dryrun", true).Logger()
@@ -46,13 +41,19 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 		Logger: logger,
 	})
 
-	addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+	err = addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+	if err != nil {
+		return fmt.Errorf("could not add sync jobs: %w", err)
+	}
 
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	startConfigFileWatcher(ctx, args.Daemon.Config, logger, ticker, func(cfg *config.Config) {
 		scheduler.RemoveJobs()
-		addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+		err := addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to add sync jobs")
+		}
 	})
 
 	scheduler.Start()
