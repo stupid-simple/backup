@@ -47,10 +47,18 @@ func ScanDirectory(ctx context.Context, dirPath string, logger zerolog.Logger) (
 				logger.Warn().Err(err).Str("path", path).Msg("could not stat path")
 				return nil
 			}
+
 			mode := info.Mode()
 			if !mode.IsRegular() {
 				return nil
 			}
+
+			// Check if the file is readable.
+			if mode&0444 == 0 {
+				logger.Warn().Str("path", path).Msg("file is not readable")
+				return nil
+			}
+
 			statFiles++
 
 			newAsset, err := NewFromFS(path, info)
