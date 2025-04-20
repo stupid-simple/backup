@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -87,17 +86,27 @@ func StoreAssets(
 
 	fullPrefix := filepath.Join(dest.Dir, fmt.Sprintf("%s%d", dest.Prefix, time.Now().UTC().UnixMilli()))
 
-	return writeAssetsToZip(ctx, sourcePath, fullPrefix, assets, onArchived, logger, o)
+	return writeAssetsToZip(ctx, sourcePath, fullPrefix, seqToReadableFileAssets(assets), onArchived, logger, writeOptions{
+		dryRun:            o.dryRun,
+		maxFileBytes:      o.maxFileBytes,
+		includeLargeFiles: o.includeLargeFiles,
+	})
+}
+
+type writeOptions struct {
+	dryRun            bool
+	maxFileBytes      int64
+	includeLargeFiles bool
 }
 
 func writeAssetsToZip(
 	ctx context.Context,
 	sourcePath string,
 	fullPrefix string,
-	assets iter.Seq[asset.Asset],
+	assets iter.Seq[readableAsset],
 	onArchived func(asset.ArchivedAsset),
 	logger zerolog.Logger,
-	o storeOptions,
+	o writeOptions,
 ) error {
 	var zipFile *zipwriter.ZipFile
 	if o.dryRun {
@@ -172,14 +181,14 @@ func writeAssetsToZip(
 	return nil
 }
 
-func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.Writer, logger zerolog.Logger) (asset.ArchivedAsset, error) {
-	assetFile, err := os.Open(asset.Path())
+func writeAsset(sourcePath string, archivePath string, asset readableAsset, w io.Writer, logger zerolog.Logger) (asset.ArchivedAsset, error) {
+	reader, err := asset.Open()
 	if err != nil {
 		return nil, err
 	}
 	startTime := time.Now()
 	defer func() {
-		if err := assetFile.Close(); err != nil {
+		if err := reader.Close(); err != nil {
 			logger.Warn().Err(err).Msg("failed to close asset file")
 		}
 		tookSeconds := time.Since(startTime).Seconds()
@@ -187,7 +196,7 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 	}()
 
 	// Write to zip as well as compute hash.
-	tee := io.TeeReader(assetFile, w)
+	tee := io.TeeReader(reader, w)
 	h, err := fileutils.ComputeHash(tee)
 	if err != nil {
 		return nil, err
@@ -224,6 +233,98 @@ func iterChannel[T any](ctx context.Context, ch <-chan T) iter.Seq[T] {
 				if !yield(item) {
 					return
 				}
+			}
+		}
+	}
+}
+
+func seqToReadableFileAssets(assets iter.Seq[asset.Asset]) iter.Seq[readableAsset] {
+	return func(yield func(readableAsset) bool) {
+		for a := range assets {
+			if !yield(readableFileAsset{a}) {
+				return
+			}
+		}
+	}
+}
+
+// Copies archived assets to a new archive.
+func CopyArchived(ctx context.Context,
+	sourcePath string,
+	dest ArchiveDescriptor,
+	assets iter.Seq[asset.ArchivedAsset],
+	logger zerolog.Logger,
+	opts ...CopyArchivedOption) error {
+
+	o := copyArchivedOptions{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	logger = logger.With().Str("source", sourcePath).Str("dest", dest.Dir).Logger()
+	logger.Info().Msg("copying archived assets")
+
+	var wg sync.WaitGroup
+	var storedAssets int
+	defer func() {
+		wg.Wait()
+		if ctx.Err() != nil {
+			logger.Info().Int("copied", storedAssets).Msg("cancelled backup")
+		} else if storedAssets == 0 {
+			logger.Info().Msg("no assets backed up")
+		} else {
+			logger.Info().Int("copied", storedAssets).Msg("done backing up assets")
+		}
+	}()
+
+	var onArchived func(a asset.ArchivedAsset)
+	if o.registerAssets != nil {
+		storedCh := make(chan asset.ArchivedAsset)
+		defer close(storedCh)
+		onArchived = func(a asset.ArchivedAsset) {
+			storedCh <- a
+			storedAssets++
+		}
+
+		wg.Add(1)
+		go func() {
+			err := o.registerAssets.Register(ctx, iterChannel(ctx, storedCh))
+			if err != nil {
+				logger.Error().Err(err).Msg("could not register backup assets")
+				// Drain the channel.
+				for range storedCh {
+				}
+			}
+			wg.Done()
+		}()
+	} else {
+		onArchived = func(asset.ArchivedAsset) {
+			storedAssets++
+		}
+	}
+
+	fullPrefix := filepath.Join(dest.Dir, fmt.Sprintf("%s%d", dest.Prefix, time.Now().UTC().UnixMilli()))
+
+	zipArchive := Open()
+	defer func() {
+		err := zipArchive.Close()
+		if err != nil {
+			logger.Error().Err(err).Msg("could not close zip archive")
+		}
+	}()
+
+	return writeAssetsToZip(ctx, sourcePath, fullPrefix, seqToReadableZipAssets(assets, zipArchive), onArchived, logger, writeOptions{
+		dryRun:            o.dryRun,
+		maxFileBytes:      o.maxFileBytes,
+		includeLargeFiles: true,
+	})
+}
+
+func seqToReadableZipAssets(assets iter.Seq[asset.ArchivedAsset], archive *zipArchive) iter.Seq[readableAsset] {
+	return func(yield func(readableAsset) bool) {
+		for a := range assets {
+			if !yield(readableZipAsset{a, archive}) {
+				return
 			}
 		}
 	}

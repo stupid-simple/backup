@@ -71,6 +71,12 @@ func main() {
 			logger.Error().Err(err).Msg("restore error")
 			cli.Exit(1)
 		}
+	case "compact":
+		err := compactCommand(ctx, args, logger)
+		if err != nil {
+			logger.Error().Err(err).Msg("compact error")
+			cli.Exit(1)
+		}
 	case "daemon":
 		err := daemonCommand(ctx, args, logger)
 		if err != nil {

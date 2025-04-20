@@ -1,9 +1,12 @@
 package ziparchiver
 
 import (
+	"io"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/asset"
 )
 
 type zipAsset struct {
@@ -56,4 +59,26 @@ func (z *zipAsset) Path() string {
 // Size implements asset.Asset.
 func (z *zipAsset) Size() int64 {
 	return z.uncompressedSize
+}
+
+type readableAsset interface {
+	asset.Asset
+	Open() (io.ReadCloser, error)
+}
+
+type readableFileAsset struct {
+	asset.Asset
+}
+
+func (r readableFileAsset) Open() (io.ReadCloser, error) {
+	return os.Open(r.Path())
+}
+
+type readableZipAsset struct {
+	asset.ArchivedAsset
+	archive *zipArchive
+}
+
+func (r readableZipAsset) Open() (io.ReadCloser, error) {
+	return r.archive.Open(r.ArchivedAsset)
 }
