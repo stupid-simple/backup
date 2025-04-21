@@ -40,12 +40,12 @@ type dblog struct {
 }
 
 // Error implements logger.Interface.
-func (d *dblog) Error(_ context.Context, msg string, args ...interface{}) {
+func (d *dblog) Error(_ context.Context, msg string, args ...any) {
 	d.parent.Error().Msgf(msg, args...)
 }
 
 // Info implements logger.Interface.
-func (d *dblog) Info(_ context.Context, msg string, args ...interface{}) {
+func (d *dblog) Info(_ context.Context, msg string, args ...any) {
 	d.parent.Info().Msgf(msg, args...)
 }
 
@@ -81,7 +81,7 @@ func (d *dblog) Trace(ctx context.Context, begin time.Time, fc func() (sql strin
 }
 
 // Warn implements logger.Interface.
-func (d *dblog) Warn(_ context.Context, msg string, args ...interface{}) {
+func (d *dblog) Warn(_ context.Context, msg string, args ...any) {
 	d.parent.Warn().Msgf(msg, args...)
 }
 
