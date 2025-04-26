@@ -8,7 +8,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stupid-simple/backup/asset"
-	"github.com/stupid-simple/backup/fileutils"
 	"gorm.io/gorm"
 )
 
@@ -329,9 +328,21 @@ func (bs *BackupSource) findMissingAssetsInBatches(
 		}
 
 		results := []ArchiveAsset{}
+		subQuery := bs.db.Cli.WithContext(ctx).
+			Select("archive_asset.path, MAX(archive_asset.created_at) AS max_created_at").
+			Joins("JOIN archive ON archive.path = archive_asset.archive_path").
+			Where("archive.source_path = ? AND archive_asset.path IN ?",
+				bs.record.Path, lookForPaths).
+			Group("archive_asset.path").
+			Table("archive_asset")
+
 		bs.db.Lock.Lock()
 		err := bs.db.Cli.WithContext(ctx).
-			Where("path in ?", lookForPaths).
+			Select("archive_asset.*").
+			Joins("JOIN (?) AS latest ON latest.path = archive_asset.path "+
+				"AND latest.max_created_at = archive_asset.created_at", subQuery).
+			Joins("Archive").
+			Where("archive_asset.path IN ?", lookForPaths).
 			Find(&results).Error
 		bs.db.Lock.Unlock()
 		if err != nil {
@@ -464,7 +475,7 @@ func isAssetModified(asset asset.Asset, archivedAsset *ArchiveAsset) (bool, erro
 		return false, nil
 	}
 
-	h, err := fileutils.ComputeFileHash(asset.Path())
+	h, err := asset.ComputeHash()
 	if err != nil {
 		return false, nil
 	}

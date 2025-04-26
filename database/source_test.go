@@ -54,19 +54,83 @@ func TestDatabase_GetSource(t *testing.T) {
 	assert.Equal(t, source.Path(), source2.Path())
 }
 
-func TestBackupSource_FindMissingAssets(t *testing.T) {
+func TestBackupSource_FindMissingAssetsWithVersions(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()
 	source, err := db.GetSource(ctx, "test/source/path")
 	require.NoError(t, err)
-	now := time.Now()
+	oldTime := time.Now().Add(-2 * time.Hour)
+	newTime := time.Now().Add(-1 * time.Hour)
 
-	// Populate archive with one existing asset
-	registerArchivedAsset(t, db, "test/source/path", "archive1", "existing/path1", 100, now)
+	registerArchivedAsset(t, db, "test/source/path", "archive1", "versioned/path", 100, oldTime)
+	registerArchivedAsset(t, db, "test/source/path", "archive2", "versioned/path", 200, newTime)
+
+	// Different scenarios to test
+	testCases := []struct {
+		name            string
+		assetToCheck    asset.Asset
+		shouldBeMissing bool
+	}{
+		{
+			name:            "unmodified asset matching latest version",
+			assetToCheck:    newTestAsset("versioned/path", 200), // Matches newest version hash
+			shouldBeMissing: false,
+		},
+		{
+			name:            "asset modified from latest version",
+			assetToCheck:    newTestAsset("versioned/path", 300), // Different from newest version hash
+			shouldBeMissing: true,
+		},
+		{
+			name:            "asset matching old version but not latest",
+			assetToCheck:    newTestAsset("versioned/path", 100), // Matches old version but not newest
+			shouldBeMissing: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assets := []asset.Asset{tc.assetToCheck}
+
+			out, err := source.FindMissingAssets(ctx, slices.Values(assets))
+			require.NoError(t, err)
+
+			var missingAssets []asset.Asset
+			for a := range out {
+				missingAssets = append(missingAssets, a)
+			}
+
+			if tc.shouldBeMissing {
+				assert.Len(t, missingAssets, 1, "Expected asset to be marked as missing")
+				if len(missingAssets) > 0 {
+					assert.Equal(t, tc.assetToCheck.Path(), missingAssets[0].Path())
+				}
+			} else {
+				assert.Len(t, missingAssets, 0, "Expected asset to NOT be marked as missing")
+			}
+		})
+	}
+}
+
+func TestBackupSource_FindMissingAssetsComplex(t *testing.T) {
+	db := setupTestDB(t)
+	ctx := context.Background()
+	source, err := db.GetSource(ctx, "test/source/path")
+	require.NoError(t, err)
+
+	oldTime := time.Now().Add(-2 * time.Hour)
+	newTime := time.Now().Add(-1 * time.Hour)
+
+	registerArchivedAsset(t, db, "test/source/path", "archive1", "path1", 100, oldTime)
+	registerArchivedAsset(t, db, "test/source/path", "archive2", "path1", 200, newTime) // Newer version of path1
+	registerArchivedAsset(t, db, "test/source/path", "archive1", "path2", 300, oldTime)
+	registerArchivedAsset(t, db, "test/source/path", "archive1", "path3", 400, oldTime)
 
 	assets := []asset.Asset{
-		newTestAsset("existing/path1", 100),
-		newTestAsset("missing/path2", 200),
+		newTestAsset("path1", 200), // Matches latest version
+		newTestAsset("path2", 350), // Modified from only version
+		newTestAsset("path3", 400), // Matches only version
+		newTestAsset("path4", 500), // New path not in database
 	}
 
 	out, err := source.FindMissingAssets(ctx, slices.Values(assets))
@@ -76,8 +140,21 @@ func TestBackupSource_FindMissingAssets(t *testing.T) {
 	for a := range out {
 		missingAssets = append(missingAssets, a)
 	}
-	assert.Len(t, missingAssets, 1)
-	assert.Equal(t, "missing/path2", missingAssets[0].Path())
+
+	// Should find 2 missing assets: path2 (modified) and path4 (new)
+	assert.Len(t, missingAssets, 2)
+
+	// Collect paths of missing assets
+	missingPaths := make([]string, len(missingAssets))
+	for i, a := range missingAssets {
+		missingPaths[i] = a.Path()
+	}
+
+	// Verify the right assets were identified as missing
+	assert.Contains(t, missingPaths, "path2")
+	assert.Contains(t, missingPaths, "path4")
+	assert.NotContains(t, missingPaths, "path1")
+	assert.NotContains(t, missingPaths, "path3")
 }
 
 func TestBackupSource_Register(t *testing.T) {
