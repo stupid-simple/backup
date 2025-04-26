@@ -1,12 +1,15 @@
 package ziparchiver
 
 import (
+	"archive/zip"
+	"errors"
 	"io"
 	"os"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stupid-simple/backup/asset"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 type zipAsset struct {
@@ -29,6 +32,31 @@ func (z *zipAsset) ArchivePath() string {
 
 func (z *zipAsset) ComputedHash() uint64 {
 	return z.hash
+}
+
+func (z *zipAsset) ComputeHash() (uint64, error) {
+	reader, err := zip.OpenReader(z.archivePath)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		closeErr := reader.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	file, err := reader.Open(z.name)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		closeErr := file.Close()
+		err = errors.Join(err, closeErr)
+	}()
+	hash, err := fileutils.ComputeHash(file)
+	if err != nil {
+		return 0, err
+	}
+	return hash, err
 }
 
 // MarshalZerologObject implements asset.Asset.

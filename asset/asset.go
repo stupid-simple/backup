@@ -12,6 +12,7 @@ type Asset interface {
 	Name() string // base name of the file
 	Size() int64  // length in bytes for regular files
 	ModTime() time.Time
+	ComputeHash() (uint64, error)
 }
 
 type ArchivedAsset interface {

@@ -106,7 +106,6 @@ func TestStoreAssets_Basic(t *testing.T) {
 
 	logger := zerolog.New(io.Discard)
 
-	// Store assets
 	err := ziparchiver.StoreAssets(
 		context.Background(),
 		sourceDir,
@@ -117,16 +116,30 @@ func TestStoreAssets_Basic(t *testing.T) {
 
 	require.NoError(t, err)
 
-	// Verify backup file was created
 	files, err := os.ReadDir(destDir)
 	require.NoError(t, err)
 	assert.Len(t, files, 1)
+}
 
-	// Create registry
+func TestStoreAssets_WithRegistry(t *testing.T) {
+	sourceDir := t.TempDir()
+	destDir := t.TempDir()
+
+	assets := createTestAssets(t, sourceDir, 3)
+
+	assetSeq := func(yield func(asset.Asset) bool) {
+		for _, a := range assets {
+			if !yield(a) {
+				break
+			}
+		}
+	}
+
 	registry := &MockArchivedAssetRegistry{}
 
-	// Store assets with registry
-	err = ziparchiver.StoreAssets(
+	logger := zerolog.New(io.Discard)
+
+	err := ziparchiver.StoreAssets(
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},

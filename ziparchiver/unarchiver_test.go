@@ -36,6 +36,9 @@ func (m *MockArchivedAsset) Path() string         { return m.filePath }
 func (m *MockArchivedAsset) Name() string         { return m.name }
 func (m *MockArchivedAsset) Size() int64          { return m.size }
 func (m *MockArchivedAsset) ModTime() time.Time   { return m.modTime }
+func (m *MockArchivedAsset) ComputeHash() (uint64, error) {
+	return fileutils.ComputeFileHash(m.filePath)
+}
 func (m *MockArchivedAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("path", m.filePath)
 	e.Str("name", m.name)

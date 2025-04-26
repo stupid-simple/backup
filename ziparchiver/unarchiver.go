@@ -13,7 +13,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stupid-simple/backup/asset"
-	"github.com/stupid-simple/backup/fileutils"
 )
 
 var (
@@ -109,7 +108,8 @@ func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, o
 			return 0, errSkippedSameFile
 		}
 
-		storedFileHash, err := fileutils.ComputeFileHash(asset.Path())
+		// Check if the file on disk has been modified.
+		storedFileHash, err := asset.ComputeHash()
 		if err != nil {
 			return 0, err
 		}

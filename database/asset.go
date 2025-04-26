@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 type dbAsset struct {
@@ -16,6 +17,10 @@ func (d dbAsset) SourcePath() string {
 
 func (d dbAsset) ArchivePath() string {
 	return d.record.Archive.Path
+}
+
+func (d dbAsset) ComputeHash() (uint64, error) {
+	return fileutils.ComputeFileHash(d.record.Path)
 }
 
 func (d dbAsset) ComputedHash() uint64 {

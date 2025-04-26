@@ -394,6 +394,9 @@ func (a *testAsset) ModTime() time.Time   { return time.Now() }
 func (a *testAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("path", a.path).Uint64("hash", a.hash)
 }
+func (a *testAsset) ComputeHash() (uint64, error) {
+	return a.hash, nil
+}
 
 // testArchivedAsset implements asset.ArchivedAsset
 type testArchivedAsset struct {
