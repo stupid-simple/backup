@@ -109,20 +109,23 @@ func writeAssetsToZip(
 	o writeOptions,
 ) error {
 	var zipFile *zipwriter.ZipFile
-	if o.dryRun {
-		zipFile = zipwriter.NewNullZipFile()
-	} else {
-		zipFile = newZipFilePart(fullPrefix, 0)
-		logger.Info().Str("path", zipFile.Path()).Msg("open archive")
-	}
+	zipFile = newZipFilePart(fullPrefix, 0, o.dryRun)
+	logger.Info().Str("path", zipFile.Path()).Msg("open archive")
+
+	var written int64
+	var storedAssets int
 	defer func() {
 		if err := zipFile.Close(); err != nil {
 			logger.Warn().Err(err).Msg("could not close backup file")
+		} else {
+			logger.Info().
+				Int64("files_size", written).
+				Int("files_count", storedAssets).
+				Msg("successfully written backup file")
 		}
 	}()
 
 	var err error
-	var written int64
 	var part int
 	for asset := range assets {
 		if ctx.Err() != nil {
@@ -141,11 +144,19 @@ func writeAssetsToZip(
 				Msg("archive size larger than max file size. Will open a new file")
 			if err = zipFile.Close(); err != nil {
 				logger.Warn().Err(err).Msg("could not close backup file")
+			} else {
+				logger.Info().
+					Int64("files_size", written).
+					Int("files_count", storedAssets).
+					Msg("successfully written backup file")
 			}
-			part++
+
 			written = 0
-			zipFile = newZipFilePart(fullPrefix, part)
-			logger.Info().Str("path", zipFile.Path()).Msg("open archive")
+			storedAssets = 0
+			part++
+			zipFile = newZipFilePart(fullPrefix, part, o.dryRun)
+			logger.Info().Str("path", zipFile.Path()).Int("part", part).Msg("open archive")
+
 		}
 
 		header := &zip.FileHeader{
@@ -175,6 +186,7 @@ func writeAssetsToZip(
 				Msg("backed up asset")
 		}
 		written += asset.Size()
+		storedAssets++
 		onArchived(archivedAsset)
 	}
 
@@ -213,7 +225,11 @@ func writeAsset(sourcePath string, archivePath string, asset readableAsset, w io
 	}, nil
 }
 
-func newZipFilePart(fullPrefix string, part int) *zipwriter.ZipFile {
+func newZipFilePart(fullPrefix string, part int, dryRun bool) *zipwriter.ZipFile {
+	if dryRun {
+		return zipwriter.NewNullZipFile()
+	}
+
 	if part == 0 {
 		return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.zip", fullPrefix))
 	}

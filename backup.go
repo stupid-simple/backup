@@ -35,7 +35,7 @@ func backupCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 		}
 	}()
 
-	db, err := newSQLite(args.Backup.Database, logger, args.Backup.DryRun)
+	db, err := newSQLite(args.Backup.Database, logger)
 	if err != nil {
 		return err
 	}

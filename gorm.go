@@ -12,10 +12,9 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-func newSQLite(path string, logger zerolog.Logger, dryRun bool) (*gorm.DB, error) {
+func newSQLite(path string, logger zerolog.Logger) (*gorm.DB, error) {
 	cli, err := gorm.Open(sqlite.Open(path), &gorm.Config{
 		Logger: dbLogger(logger),
-		DryRun: dryRun,
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},

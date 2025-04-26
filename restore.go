@@ -32,7 +32,7 @@ func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) er
 		}
 	}()
 
-	dbCli, err := newSQLite(args.Restore.Database, logger, args.Restore.DryRun)
+	dbCli, err := newSQLite(args.Restore.Database, logger)
 	if err != nil {
 		return err
 	}

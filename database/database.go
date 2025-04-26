@@ -23,7 +23,12 @@ func (d *Database) GetSource(ctx context.Context, path string) (*BackupSource, e
 	d.Logger.Debug().Str("path", path).Msg("get source")
 
 	source := &Source{}
-	err := d.Cli.Where(Source{Path: path}).FirstOrCreate(source).Error
+	var err error
+	if d.DryRun {
+		err = d.Cli.Where(Source{Path: path}).First(source).Error
+	} else {
+		err = d.Cli.Where(Source{Path: path}).FirstOrCreate(source).Error
+	}
 	if err != nil {
 		return nil, err
 	}

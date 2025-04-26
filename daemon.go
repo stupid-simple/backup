@@ -26,7 +26,7 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 		return fmt.Errorf("could not load config: %w", err)
 	}
 
-	dbCli, err := newSQLite(args.Daemon.Database, logger, args.Daemon.DryRun)
+	dbCli, err := newSQLite(args.Daemon.Database, logger)
 	if err != nil {
 		return fmt.Errorf("could not open database: %w", err)
 	}
