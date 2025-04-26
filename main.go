@@ -71,10 +71,16 @@ func main() {
 			logger.Error().Err(err).Msg("restore error")
 			cli.Exit(1)
 		}
-	case "compact":
-		err := compactCommand(ctx, args, logger)
+	case "copy":
+		err := copyCommand(ctx, args, logger)
 		if err != nil {
-			logger.Error().Err(err).Msg("compact error")
+			logger.Error().Err(err).Msg("copy error")
+			cli.Exit(1)
+		}
+	case "clean":
+		err := cleanCommand(ctx, args, logger)
+		if err != nil {
+			logger.Error().Err(err).Msg("clean error")
 			cli.Exit(1)
 		}
 	case "daemon":
