@@ -117,11 +117,9 @@ golangci-lint run
 
 ### Container
 
-The container image uses alpine. To build the container is necessary to build the binary statically.
-
 ```shell
 # Build docker image for compilation.
-CGO_ENABLED=0 go build -o ssbak .
+go build -o ssbak .
 # Build ssbak container.
 docker build -t ghcr.io/stupid-simple/backup .
 ```
