@@ -30,7 +30,7 @@ func (z *zipAsset) ArchivePath() string {
 	return z.archivePath
 }
 
-func (z *zipAsset) ComputedHash() uint64 {
+func (z *zipAsset) StoredHash() uint64 {
 	return z.hash
 }
 

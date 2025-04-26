@@ -31,7 +31,7 @@ type MockArchivedAsset struct {
 
 func (m *MockArchivedAsset) SourcePath() string   { return m.sourcePath }
 func (m *MockArchivedAsset) ArchivePath() string  { return m.archivePath }
-func (m *MockArchivedAsset) ComputedHash() uint64 { return m.hash }
+func (m *MockArchivedAsset) StoredHash() uint64 { return m.hash }
 func (m *MockArchivedAsset) Path() string         { return m.filePath }
 func (m *MockArchivedAsset) Name() string         { return m.name }
 func (m *MockArchivedAsset) Size() int64          { return m.size }

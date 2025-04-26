@@ -445,7 +445,7 @@ func (bs *BackupSource) recordAssetsInBatches(
 					},
 					Path:    a.Path(),
 					Size:    a.Size(),
-					Hash:    int64(a.ComputedHash()),
+					Hash:    int64(a.StoredHash()),
 					ModTime: a.ModTime(),
 					Name:    a.Name(),
 				}).Error; err != nil {

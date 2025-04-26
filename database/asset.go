@@ -23,7 +23,7 @@ func (d dbAsset) ComputeHash() (uint64, error) {
 	return fileutils.ComputeFileHash(d.record.Path)
 }
 
-func (d dbAsset) ComputedHash() uint64 {
+func (d dbAsset) StoredHash() uint64 {
 	return uint64(d.record.Hash)
 }
 

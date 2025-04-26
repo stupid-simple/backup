@@ -157,7 +157,7 @@ func TestStoreAssets_WithRegistry(t *testing.T) {
 	for _, a := range registry.assets {
 		assert.Equal(t, sourceDir, a.SourcePath(), "SourcePath should match")
 		assert.NotEmpty(t, a.ArchivePath(), "ArchivePath should be set")
-		assert.NotZero(t, a.ComputedHash(), "Hash should be computed")
+		assert.NotZero(t, a.StoredHash(), "Hash should be computed")
 	}
 }
 
