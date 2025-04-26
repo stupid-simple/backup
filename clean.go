@@ -49,7 +49,6 @@ func cleanCommand(ctx context.Context, args Command, logger zerolog.Logger) erro
 
 type cleanParams struct {
 	sourcePath    string
-	destPath      string
 	limitArchives int
 	dryRun        bool
 	db            *database.Database
