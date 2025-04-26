@@ -21,13 +21,13 @@ func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error
 	}
 
 	startTime := time.Now()
-	logger.Info().Msg("starting compacting")
+	logger.Info().Msg("starting copying")
 	defer func() {
 		tookSeconds := time.Since(startTime).Seconds()
 		if ctx.Err() != nil {
-			logger.Info().Float64("seconds", tookSeconds).Msg("compacting cancelled")
+			logger.Info().Float64("seconds", tookSeconds).Msg("copying cancelled")
 		} else {
-			logger.Info().Float64("seconds", tookSeconds).Msg("compacting done")
+			logger.Info().Float64("seconds", tookSeconds).Msg("copying done")
 		}
 	}()
 
@@ -42,7 +42,7 @@ func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error
 		DryRun: args.Copy.DryRun,
 	}
 
-	return compactArchives(ctx, compactParams{
+	return copyArchives(ctx, copyParams{
 		sourcePath:    args.Copy.Source,
 		destPath:      args.Copy.Dest,
 		archivePrefix: args.Copy.ArchivePrefix,
@@ -54,7 +54,7 @@ func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error
 	})
 }
 
-type compactParams struct {
+type copyParams struct {
 	sourcePath    string
 	destPath      string
 	archivePrefix string
@@ -65,7 +65,7 @@ type compactParams struct {
 	logger        zerolog.Logger
 }
 
-func compactArchives(ctx context.Context, p compactParams) error {
+func copyArchives(ctx context.Context, p copyParams) error {
 
 	var sources iter.Seq[*database.BackupSource]
 	if p.sourcePath == "" {
@@ -132,7 +132,7 @@ func compactArchives(ctx context.Context, p compactParams) error {
 			continue
 		}
 
-		ziparchiver.CopyArchived(ctx, src.Path(), ziparchiver.ArchiveDescriptor{
+		err = ziparchiver.CopyArchived(ctx, src.Path(), ziparchiver.ArchiveDescriptor{
 			Dir:    p.destPath,
 			Prefix: p.archivePrefix,
 		},
@@ -142,6 +142,9 @@ func compactArchives(ctx context.Context, p compactParams) error {
 			ziparchiver.WithCopyArchiveRegisterAssets(src),
 			ziparchiver.WithCopyArchiveMaxFileBytes(p.maxFileBytes),
 		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to copy archives")
+		}
 	}
 
 	return nil

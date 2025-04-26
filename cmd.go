@@ -23,7 +23,7 @@ type Command struct {
 		Dest          string              `help:"destination directory path" short:"D" required:""`
 		Database      string              `help:"database path" short:"d" required:""`
 		MaxSize       config.SizeArgument `help:"maximum stored bytes per archive in bytes"`
-		ArchiveLimit  int                 `help:"maximum number of archives to compact"`
+		ArchiveLimit  int                 `help:"maximum number of archives to copy"`
 		ArchivePrefix string              `help:"archive prefix"`
 		DryRun        bool                `help:"don't write any files, just print the output"`
 	} `cmd:"" help:"Manually copy backup files into new archives."`
