@@ -60,31 +60,31 @@ func main() {
 		fmt.Printf("%s\n", Version)
 		cli.Exit(0)
 	case "backup":
-		err := backupCommand(ctx, args, logger)
+		err := backupCommand(ctx, args.Backup, logger)
 		if err != nil {
 			logger.Error().Err(err).Msg("backup error")
 			cli.Exit(1)
 		}
 	case "restore":
-		err := restoreCommand(ctx, args, logger)
+		err := restoreCommand(ctx, args.Restore, logger)
 		if err != nil {
 			logger.Error().Err(err).Msg("restore error")
 			cli.Exit(1)
 		}
 	case "copy":
-		err := copyCommand(ctx, args, logger)
+		err := copyCommand(ctx, args.Copy, logger)
 		if err != nil {
 			logger.Error().Err(err).Msg("copy error")
 			cli.Exit(1)
 		}
 	case "clean":
-		err := cleanCommand(ctx, args, logger)
+		err := cleanCommand(ctx, args.Clean, logger)
 		if err != nil {
 			logger.Error().Err(err).Msg("clean error")
 			cli.Exit(1)
 		}
 	case "daemon":
-		err := daemonCommand(ctx, args, logger)
+		err := daemonCommand(ctx, args.Daemon, logger)
 		if err != nil {
 			logger.Error().Err(err).Msg("daemon error")
 			cli.Exit(1)

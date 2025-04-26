@@ -11,8 +11,8 @@ import (
 	"github.com/stupid-simple/backup/database"
 )
 
-func cleanCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
-	if args.Clean.DryRun {
+func cleanCommand(ctx context.Context, args CleanCommand, logger zerolog.Logger) error {
+	if args.DryRun {
 		logger = logger.With().Bool("dryrun", true).Logger()
 	}
 
@@ -27,7 +27,7 @@ func cleanCommand(ctx context.Context, args Command, logger zerolog.Logger) erro
 		}
 	}()
 
-	dbCli, err := newSQLite(args.Clean.Database, logger)
+	dbCli, err := newSQLite(args.Database, logger)
 	if err != nil {
 		return err
 	}
@@ -35,13 +35,13 @@ func cleanCommand(ctx context.Context, args Command, logger zerolog.Logger) erro
 	db := &database.Database{
 		Cli:    dbCli,
 		Logger: logger,
-		DryRun: args.Clean.DryRun,
+		DryRun: args.DryRun,
 	}
 
 	return cleanOldBackupFiles(ctx, cleanParams{
-		sourcePath:    args.Clean.Source,
-		limitArchives: args.Clean.ArchiveLimit,
-		dryRun:        args.Clean.DryRun,
+		sourcePath:    args.Source,
+		limitArchives: args.ArchiveLimit,
+		dryRun:        args.DryRun,
 		db:            db,
 		logger:        logger,
 	})

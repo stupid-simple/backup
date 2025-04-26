@@ -11,12 +11,12 @@ import (
 	"github.com/stupid-simple/backup/ziparchiver"
 )
 
-func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
-	if args.Copy.DryRun {
+func copyCommand(ctx context.Context, args CopyCommand, logger zerolog.Logger) error {
+	if args.DryRun {
 		logger = logger.With().Bool("dryrun", true).Logger()
 	}
 
-	if args.Copy.MaxSize.Size > 0 && args.Copy.MaxSize.Size < 1024 {
+	if args.MaxSize.Size > 0 && args.MaxSize.Size < 1024 {
 		return fmt.Errorf("max size must be at least 1024 bytes")
 	}
 
@@ -31,7 +31,7 @@ func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error
 		}
 	}()
 
-	dbCli, err := newSQLite(args.Copy.Database, logger)
+	dbCli, err := newSQLite(args.Database, logger)
 	if err != nil {
 		return err
 	}
@@ -39,16 +39,16 @@ func copyCommand(ctx context.Context, args Command, logger zerolog.Logger) error
 	db := &database.Database{
 		Cli:    dbCli,
 		Logger: logger,
-		DryRun: args.Copy.DryRun,
+		DryRun: args.DryRun,
 	}
 
 	return copyArchives(ctx, copyParams{
-		sourcePath:    args.Copy.Source,
-		destPath:      args.Copy.Dest,
-		archivePrefix: args.Copy.ArchivePrefix,
-		maxFileBytes:  args.Copy.MaxSize.Size,
-		limitArchives: args.Copy.ArchiveLimit,
-		dryRun:        args.Copy.DryRun,
+		sourcePath:    args.Source,
+		destPath:      args.Dest,
+		archivePrefix: args.ArchivePrefix,
+		maxFileBytes:  args.MaxSize.Size,
+		limitArchives: args.ArchiveLimit,
+		dryRun:        args.DryRun,
 		db:            db,
 		logger:        logger,
 	})

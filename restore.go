@@ -10,16 +10,16 @@ import (
 	"github.com/stupid-simple/backup/ziparchiver"
 )
 
-func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
-	if args.Restore.DryRun {
+func restoreCommand(ctx context.Context, args RestoreCommand, logger zerolog.Logger) error {
+	if args.DryRun {
 		logger = logger.With().Bool("dryrun", true).Logger()
 	}
 
-	if args.Restore.Database == "" {
+	if args.Database == "" {
 		return fmt.Errorf("must specify database")
 	}
 
-	destPath := args.Restore.Dest
+	destPath := args.Dest
 
 	startTime := time.Now()
 	logger.Info().Str("dest", destPath).Msg("starting restore")
@@ -32,7 +32,7 @@ func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) er
 		}
 	}()
 
-	dbCli, err := newSQLite(args.Restore.Database, logger)
+	dbCli, err := newSQLite(args.Database, logger)
 	if err != nil {
 		return err
 	}
@@ -40,10 +40,10 @@ func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) er
 	db := &database.Database{
 		Cli:    dbCli,
 		Logger: logger,
-		DryRun: args.Restore.DryRun,
+		DryRun: args.DryRun,
 	}
 
-	restoreDest, err := db.GetSource(ctx, args.Restore.Dest)
+	restoreDest, err := db.GetSource(ctx, args.Dest)
 	if err != nil {
 		return err
 	}
@@ -57,6 +57,6 @@ func restoreCommand(ctx context.Context, args Command, logger zerolog.Logger) er
 		ctx,
 		assets,
 		logger.With().Str("dest", destPath).Logger(),
-		ziparchiver.WithRestoreDryRun(args.Restore.DryRun),
+		ziparchiver.WithRestoreDryRun(args.DryRun),
 	)
 }
