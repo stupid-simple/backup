@@ -42,6 +42,13 @@ func TestNewFromFS(t *testing.T) {
 	if a.Name() != "hello.txt" {
 		t.Errorf("expected name hello.txt, got %s", a.Name())
 	}
+	hash, err := a.ComputeHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hash != 5020219685658847592 {
+		t.Errorf("expected hash 5020219685658847592, got %d", hash)
+	}
 }
 
 func TestNewFromFS_TooLarge(t *testing.T) {
