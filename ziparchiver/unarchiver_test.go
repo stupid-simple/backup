@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"iter"
 	"os"
 	"path/filepath"
 	"slices"
@@ -29,13 +28,13 @@ type MockArchivedAsset struct {
 	modTime     time.Time
 }
 
-func (m *MockArchivedAsset) SourcePath() string   { return m.sourcePath }
-func (m *MockArchivedAsset) ArchivePath() string  { return m.archivePath }
-func (m *MockArchivedAsset) StoredHash() uint64 { return m.hash }
-func (m *MockArchivedAsset) Path() string         { return m.filePath }
-func (m *MockArchivedAsset) Name() string         { return m.name }
-func (m *MockArchivedAsset) Size() int64          { return m.size }
-func (m *MockArchivedAsset) ModTime() time.Time   { return m.modTime }
+func (m *MockArchivedAsset) SourcePath() string  { return m.sourcePath }
+func (m *MockArchivedAsset) ArchivePath() string { return m.archivePath }
+func (m *MockArchivedAsset) StoredHash() uint64  { return m.hash }
+func (m *MockArchivedAsset) Path() string        { return m.filePath }
+func (m *MockArchivedAsset) Name() string        { return m.name }
+func (m *MockArchivedAsset) Size() int64         { return m.size }
+func (m *MockArchivedAsset) ModTime() time.Time  { return m.modTime }
 func (m *MockArchivedAsset) ComputeHash() (uint64, error) {
 	return fileutils.ComputeFileHash(m.filePath)
 }
@@ -186,7 +185,7 @@ func TestRestore_Basic(t *testing.T) {
 
 	logger := zerolog.New(io.Discard)
 
-	err := ziparchiver.Restore(context.Background(), iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(context.Background(), assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Failed to restore: %v", err)
 	}
@@ -248,7 +247,7 @@ func TestRestore_DryRun(t *testing.T) {
 
 	err := ziparchiver.Restore(
 		context.Background(),
-		iter.Seq[asset.ArchivedAsset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithRestoreDryRun(true),
 	)
@@ -330,7 +329,7 @@ func TestRestore_ExistingIdenticalFiles(t *testing.T) {
 		}),
 	)
 
-	err := ziparchiver.Restore(context.Background(), iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(context.Background(), assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Failed to restore: %v", err)
 	}
@@ -409,7 +408,7 @@ func TestRestore_ExistingModifiedFiles(t *testing.T) {
 		}),
 	)
 
-	err := ziparchiver.Restore(context.Background(), iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(context.Background(), assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Failed to restore: %v", err)
 	}
@@ -483,7 +482,7 @@ func TestRestore_ContextCancellation(t *testing.T) {
 
 	logger := zerolog.New(io.Discard)
 
-	err := ziparchiver.Restore(ctx, iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(ctx, assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Failed to restore: %v", err)
 	}
@@ -545,7 +544,7 @@ func TestRestore_InvalidArchivePath(t *testing.T) {
 		}),
 	)
 
-	err := ziparchiver.Restore(context.Background(), iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(context.Background(), assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Restore should handle errors gracefully: %v", err)
 	}
@@ -613,7 +612,7 @@ func TestRestore_TargetIsDirectory(t *testing.T) {
 		}),
 	)
 
-	err := ziparchiver.Restore(context.Background(), iter.Seq[asset.ArchivedAsset](assetSeq), logger)
+	err := ziparchiver.Restore(context.Background(), assetSeq, logger)
 	if err != nil {
 		t.Fatalf("Failed to restore: %v", err)
 	}

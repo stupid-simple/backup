@@ -110,7 +110,7 @@ func TestStoreAssets_Basic(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 	)
 
@@ -143,7 +143,7 @@ func TestStoreAssets_WithRegistry(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithRegisterArchivedAssets(registry),
 	)
@@ -207,7 +207,7 @@ func TestStoreAssets_WithFiltering(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithOnlyNewAssets(filter),
 	)
@@ -268,7 +268,7 @@ func TestStoreAssets_WithMaxFileSize(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(2500),
 	)
@@ -342,7 +342,7 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "exclude-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(1000),
 	)
@@ -377,7 +377,7 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir2, Prefix: "include-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(1000),
 		ziparchiver.WithIncludeLargeFiles(true),
@@ -427,7 +427,7 @@ func TestStoreAssets_DryRun(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithDryRun(true),
 		ziparchiver.WithRegisterArchivedAssets(registry),
@@ -493,7 +493,7 @@ func TestStoreAssets_Cancellation(t *testing.T) {
 		ctx,
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 	)
 
