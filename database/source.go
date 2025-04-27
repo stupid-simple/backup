@@ -86,53 +86,16 @@ func (bs *BackupSource) FindArchivedAssets(ctx context.Context, opts ...FindArch
 		opt(&o)
 	}
 
-	return func(yield func(asset.ArchivedAsset) bool) {
-		offset := 0
-		for {
-			assets := []ArchiveAsset{}
-
-			subQuery := bs.db.Cli.WithContext(ctx).
-				Select("archive_asset.path, MAX(archive_asset.created_at) AS max_created_at").
-				Joins("JOIN archive ON archive.path = archive_asset.archive_path").
-				Where("archive.source_path = ?", bs.record.Path).
-				Group("archive_asset.path").
-				Order("archive_asset.created_at DESC").
-				Limit(iterateBatchSize).
-				Offset(offset).
-				Table("archive_asset")
-
-			if o.archiveList != nil {
-				subQuery = subQuery.Where("archive_asset.archive_path IN (?)", o.archiveList)
+	if o.archiveSeq == nil {
+		return bs.iterArchivedAssets(ctx, ""), nil
+	} else {
+		return func(yield func(asset.ArchivedAsset) bool) {
+			for _, archivePath := range o.archiveSeq {
+				assetSeq := bs.iterArchivedAssets(ctx, archivePath)
+				assetSeq(yield)
 			}
-
-			bs.db.Lock.Lock()
-			err := bs.db.Cli.
-				Select("archive_asset.*").
-				Joins("JOIN (?) AS latest ON latest.path = archive_asset.path "+
-					"AND latest.max_created_at = archive_asset.created_at", subQuery).
-				Joins("Archive").
-				Order("archive_asset.created_at DESC").
-				Find(&assets).Error
-
-			bs.db.Lock.Unlock()
-			if err != nil {
-				bs.db.Logger.Error().Err(err).Msg("error fetching assets from database")
-				return
-			}
-			if len(assets) == 0 {
-				return
-			}
-			for i := range assets {
-				if ctx.Err() != nil {
-					return
-				}
-				if !yield(dbAsset{&assets[i]}) {
-					return
-				}
-			}
-			offset += iterateBatchSize
-		}
-	}, nil
+		}, nil
+	}
 }
 
 func (bs *BackupSource) FindArchives(ctx context.Context, opts ...FindArchivesOptions) (iter.Seq[BackupArchive], error) {
@@ -144,6 +107,7 @@ func (bs *BackupSource) FindArchives(ctx context.Context, opts ...FindArchivesOp
 	return func(yield func(BackupArchive) bool) {
 		offset := 0
 		remaining := o.limit
+		now := time.Now()
 		for {
 			var thisBatchSize int
 			if remaining > 0 {
@@ -156,6 +120,7 @@ func (bs *BackupSource) FindArchives(ctx context.Context, opts ...FindArchivesOp
 				Select("archive.path, archive.created_at, COALESCE(SUM(archive_asset.size), 0) as uncompressed_size, COUNT(archive_asset.path) as asset_count").
 				Joins("LEFT JOIN archive_asset ON archive.path = archive_asset.archive_path").
 				Where("archive.source_path = ?", bs.record.Path).
+				Where("archive.created_at < ?", now).
 				Group("archive.path, archive.created_at")
 
 			if o.onlyFullyBackedUp {
@@ -235,35 +200,80 @@ func (bs *BackupSource) FindArchives(ctx context.Context, opts ...FindArchivesOp
 	}, nil
 }
 
-func (bs *BackupSource) DeleteArchives(ctx context.Context, archivePaths []string) error {
-	if len(archivePaths) == 0 {
-		return nil
-	}
-
-	bs.logger.Info().Strs("archives", archivePaths).Msg("deleting archives")
-
+func (bs *BackupSource) DeleteArchive(ctx context.Context, archivePath string) error {
 	bs.db.Lock.Lock()
 	defer bs.db.Lock.Unlock()
 
 	if bs.db.DryRun {
-		bs.logger.Info().Strs("archives", archivePaths).Msg("would delete archives (dry run)")
+		bs.logger.Info().Str("archive", archivePath).Msg("would delete archive records (dry run)")
 		return nil
 	}
 
 	return bs.db.Cli.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// First delete all assets belonging to these archives
-		if err := tx.Where("archive_path IN ?", archivePaths).Delete(&ArchiveAsset{}).Error; err != nil {
+		if err := tx.Where("archive_path = ?", archivePath).Delete(&ArchiveAsset{}).Error; err != nil {
 			return fmt.Errorf("failed to delete archive assets: %w", err)
 		}
 
 		// Then delete the archives themselves
-		if err := tx.Where("path IN ? AND source_path = ?", archivePaths, bs.record.Path).Delete(&Archive{}).Error; err != nil {
+		if err := tx.Where("path = ? AND source_path = ?", archivePath, bs.record.Path).Delete(&Archive{}).Error; err != nil {
 			return fmt.Errorf("failed to delete archives: %w", err)
 		}
 
-		bs.logger.Info().Int("count", len(archivePaths)).Msg("archives deleted")
+		bs.logger.Info().Str("archive", archivePath).Msg("archive record deleted")
 		return nil
 	})
+}
+
+func (bs *BackupSource) iterArchivedAssets(ctx context.Context, archivePathOrAll string) iter.Seq[asset.ArchivedAsset] {
+	return func(yield func(asset.ArchivedAsset) bool) {
+		offset := 0
+
+		for {
+			assets := []ArchiveAsset{}
+
+			subQuery := bs.db.Cli.WithContext(ctx).
+				Select("archive_asset.path, MAX(archive_asset.created_at) AS max_created_at").
+				Joins("JOIN archive ON archive.path = archive_asset.archive_path").
+				Where("archive.source_path = ?", bs.record.Path).
+				Group("archive_asset.path").
+				Order("archive_asset.created_at DESC").
+				Limit(iterateBatchSize).
+				Offset(offset).
+				Table("archive_asset")
+
+			if archivePathOrAll != "" {
+				subQuery = subQuery.Where("archive.path = ?", archivePathOrAll)
+			}
+
+			bs.db.Lock.Lock()
+			err := bs.db.Cli.
+				Select("archive_asset.*").
+				Joins("JOIN (?) AS latest ON latest.path = archive_asset.path "+
+					"AND latest.max_created_at = archive_asset.created_at", subQuery).
+				Joins("Archive").
+				Order("archive_asset.created_at DESC").
+				Find(&assets).Error
+
+			bs.db.Lock.Unlock()
+			if err != nil {
+				bs.db.Logger.Error().Err(err).Msg("error fetching assets from database")
+				return
+			}
+			if len(assets) == 0 {
+				return
+			}
+			for i := range assets {
+				if ctx.Err() != nil {
+					return
+				}
+				if !yield(dbAsset{&assets[i]}) {
+					return
+				}
+			}
+			offset += iterateBatchSize
+		}
+	}
 }
 
 func (bs *BackupSource) findMissingAssetsInBatches(

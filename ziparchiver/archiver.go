@@ -181,6 +181,7 @@ func writeAssetsToZip(
 		if err != nil {
 			logger.Warn().Err(err).Object("asset", asset).
 				Msg("could not backup asset")
+			continue
 		} else {
 			logger.Debug().Object("asset", asset).
 				Msg("backed up asset")

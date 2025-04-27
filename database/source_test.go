@@ -212,7 +212,9 @@ func TestBackupSource_DeleteArchives(t *testing.T) {
 	registerArchivedAsset(t, db, "test/source/path", "archive3", "path4", 400, now)
 
 	// Delete archive1 and archive2
-	err = source.DeleteArchives(ctx, []string{"archive1", "archive2"})
+	err = source.DeleteArchive(ctx, "archive1")
+	require.NoError(t, err)
+	err = source.DeleteArchive(ctx, "archive2")
 	require.NoError(t, err)
 
 	// Verify archives were deleted
@@ -352,7 +354,7 @@ func TestBackupSource_FindArchivedAssetsWithArchiveList(t *testing.T) {
 	registerArchivedAsset(t, db, "test/source/path", "archive3", "path3", 300, now)
 
 	// Test filtering by archive list
-	out, err := source.FindArchivedAssets(ctx, database.WithArchiveList([]string{"archive1", "archive3"}))
+	out, err := source.FindArchivedAssets(ctx, database.WithArchiveSeq(slices.All([]string{"archive1", "archive3"})))
 	require.NoError(t, err)
 
 	var archivedAssets []asset.ArchivedAsset
@@ -463,11 +465,11 @@ type testAsset struct {
 	hash uint64
 }
 
-func (a *testAsset) Path() string         { return a.path }
+func (a *testAsset) Path() string       { return a.path }
 func (a *testAsset) StoredHash() uint64 { return a.hash }
-func (a *testAsset) Name() string         { return "name_" + a.path }
-func (a *testAsset) Size() int64          { return 1000 }
-func (a *testAsset) ModTime() time.Time   { return time.Now() }
+func (a *testAsset) Name() string       { return "name_" + a.path }
+func (a *testAsset) Size() int64        { return 1000 }
+func (a *testAsset) ModTime() time.Time { return time.Now() }
 func (a *testAsset) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("path", a.path).Uint64("hash", a.hash)
 }

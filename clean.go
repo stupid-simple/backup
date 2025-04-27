@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"iter"
 	"os"
 	"time"
@@ -89,50 +88,34 @@ func cleanOldBackupFiles(ctx context.Context, p cleanParams) error {
 			findOpts = append(findOpts, database.WithFindArchivesLimit(p.limitArchives))
 		}
 
-		archivePaths := []string{}
-		{
-			seq, err := src.FindArchives(ctx, findOpts...)
-			if err != nil {
-				logger.Error().Err(err).Msg("failed to find archives")
-				continue
-			}
-			for archive := range seq {
-				if ctx.Err() != nil {
-					break
-				}
-				logger.Info().
-					Str("path", archive.Path).
-					Int64("files_size", archive.Size).
-					Int("files_count", archive.AssetCount).
-					Msg("found old archive")
-				archivePaths = append(archivePaths, archive.Path)
-			}
-		}
-		if len(archivePaths) == 0 {
-			logger.Info().Msg("no old archives found")
+		seq, err := src.FindArchives(ctx, findOpts...)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to find archives")
 			continue
 		}
 
-		err := src.DeleteArchives(ctx, archivePaths)
-		if err != nil {
-			return fmt.Errorf("error deleting old backup data from registry: %w", err)
-		}
-
-		logger.Info().Interface("files", archivePaths).Msg("deleting old backup files")
-
-		for _, path := range archivePaths {
-			stat, err := os.Stat(path)
+		for archive := range seq {
+			if ctx.Err() != nil {
+				break
+			}
+			err = src.DeleteArchive(ctx, archive.Path)
 			if err != nil {
-				logger.Error().Err(err).Str("path", path).Msg("failed to stat old backup file")
+				logger.Error().Err(err).Str("path", archive.Path).Msg("failed to delete archive record")
 				continue
 			}
 
-			if err := os.Remove(path); err != nil {
-				logger.Error().Err(err).Str("path", path).
+			stat, err := os.Stat(archive.Path)
+			if err != nil {
+				logger.Error().Err(err).Str("path", archive.Path).Msg("failed to stat old backup file")
+				continue
+			}
+
+			if err := os.Remove(archive.Path); err != nil {
+				logger.Error().Err(err).Str("path", archive.Path).
 					Int64("size", stat.Size()).
 					Msg("failed to delete old backup file")
 			} else {
-				logger.Info().Str("path", path).Int64("size", stat.Size()).Msg("deleted old backup file")
+				logger.Info().Str("path", archive.Path).Int64("size", stat.Size()).Msg("deleted old backup file")
 				totalSizeFreed += stat.Size()
 				filesDeleted++
 			}
