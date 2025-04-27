@@ -78,7 +78,7 @@ Other example:
 ### `ssbak backup -s <source dir> -D <dest dir> -d <database file>` = Manually backup files
 
 This commands scans the source directory for files and copies them into a new archive in target directory.
-By default only new or modified files are copied.
+By default only new or modified files are copied. Use the `--full` flag to backup all files from the source directory.
 
 The files are registered in the database.
 
@@ -87,22 +87,11 @@ The files are registered in the database.
 This command will restore files into the target directory. The database is used as a reference source for the files
 that should be restored.
 
-### `ssbak copy -s <source dir> -D <dest dir> -d <database file>` = Manually copy files
-
-This command will copy source backup files into the target directory from the archive. The database is used as a reference source for the files
-that should be copied.
-
-*IMPORTANT* This does not copy files from source directory just the backup files stored among archives. This allow to re-arrange the files.
-
 ### `ssbak clean -d <database file>` = Manually clean old files
 
 This command will remove the archives in which all backup files are already backed up in newer archives.
 
 *IMPORTANT* This will remove previous versions of backup files.
-
-#### Compacting the archives
-
-Because the `backup` command will generate incremental copies of modified and new files, these archives will grow over time. However, by combining the `copy` and `clean` commands it is possible to re-arrange the backup files so they are stored in fewer archives.
 
 ## Build
 

@@ -47,6 +47,7 @@ func backupCommand(ctx context.Context, args BackupCommand, logger zerolog.Logge
 			destPath:          args.Dest,
 			archivePrefix:     args.ArchivePrefix,
 			maxFileBytes:      args.MaxSize.Size,
+			fullBackup:        args.Full,
 			includeLargeFiles: args.IncludeLargeFiles,
 			db:                &database.Database{Cli: db, Logger: logger, DryRun: args.DryRun},
 			dryRun:            args.DryRun,
@@ -60,6 +61,7 @@ type backupParams struct {
 	destPath          string
 	archivePrefix     string
 	maxFileBytes      int64
+	fullBackup        bool
 	includeLargeFiles bool
 	db                *database.Database
 	dryRun            bool
@@ -111,6 +113,17 @@ func backupFiles(
 		return nil
 	}
 
+	storeAssetsOptions := []ziparchiver.StoreOption{
+		ziparchiver.WithDryRun(p.dryRun),
+		ziparchiver.WithRegisterArchivedAssets(src),
+		ziparchiver.WithMaxFileBytes(p.maxFileBytes),
+		ziparchiver.WithIncludeLargeFiles(p.includeLargeFiles),
+	}
+
+	if !p.fullBackup {
+		storeAssetsOptions = append(storeAssetsOptions, ziparchiver.WithOnlyNewAssets(src))
+	}
+
 	return ziparchiver.StoreAssets(
 		ctx,
 		p.sourcePath,
@@ -120,11 +133,7 @@ func backupFiles(
 		},
 		scanned,
 		p.logger,
-		ziparchiver.WithDryRun(p.dryRun),
-		ziparchiver.WithOnlyNewAssets(src),
-		ziparchiver.WithRegisterArchivedAssets(src),
-		ziparchiver.WithMaxFileBytes(p.maxFileBytes),
-		ziparchiver.WithIncludeLargeFiles(p.includeLargeFiles),
+		storeAssetsOptions...,
 	)
 
 }

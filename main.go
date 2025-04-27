@@ -71,12 +71,6 @@ func main() {
 			logger.Error().Err(err).Msg("restore error")
 			cli.Exit(1)
 		}
-	case "copy":
-		err := copyCommand(ctx, args.Copy, logger)
-		if err != nil {
-			logger.Error().Err(err).Msg("copy error")
-			cli.Exit(1)
-		}
 	case "clean":
 		err := cleanCommand(ctx, args.Clean, logger)
 		if err != nil {

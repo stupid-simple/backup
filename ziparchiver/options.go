@@ -69,30 +69,3 @@ func WithRestoreDryRun(dryRun bool) RestoreOption {
 		o.dryRun = dryRun
 	}
 }
-
-type CopyArchivedOption func(o *copyArchivedOptions)
-
-type copyArchivedOptions struct {
-	dryRun         bool
-	registerAssets RegisterArchivedAssets
-	maxFileBytes   int64
-}
-
-func WithCopyArchivedDryRun(dryRun bool) CopyArchivedOption {
-	return func(o *copyArchivedOptions) {
-		o.dryRun = dryRun
-	}
-}
-
-// The maximum number of bytes (uncompressed) to store in a single archive.
-func WithCopyArchiveMaxFileBytes(maxFileBytes int64) CopyArchivedOption {
-	return func(o *copyArchivedOptions) {
-		o.maxFileBytes = maxFileBytes
-	}
-}
-
-func WithCopyArchiveRegisterAssets(register RegisterArchivedAssets) CopyArchivedOption {
-	return func(o *copyArchivedOptions) {
-		o.registerAssets = register
-	}
-}

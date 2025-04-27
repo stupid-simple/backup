@@ -1,20 +1,5 @@
 package database
 
-import "iter"
-
-type findArchivedAssetsOptions struct {
-	archiveSeq iter.Seq2[int, string]
-}
-
-type FindArchivedAssetsOptions func(*findArchivedAssetsOptions)
-
-// Find Assets from specific archives.
-func WithArchiveSeq(archiveSeq iter.Seq2[int, string]) FindArchivedAssetsOptions {
-	return func(o *findArchivedAssetsOptions) {
-		o.archiveSeq = archiveSeq
-	}
-}
-
 type findArchivesOptions struct {
 	limit             int
 	order             *FindArchivesOrderBy

@@ -341,38 +341,6 @@ func TestDatabase_IterSources(t *testing.T) {
 	assert.Contains(t, sourcePaths, "source3")
 }
 
-func TestBackupSource_FindArchivedAssetsWithArchiveList(t *testing.T) {
-	db := setupTestDB(t)
-	ctx := context.Background()
-	source, err := db.GetSource(ctx, "test/source/path")
-	require.NoError(t, err)
-	now := time.Now()
-
-	// Create assets in different archives
-	registerArchivedAsset(t, db, "test/source/path", "archive1", "path1", 100, now)
-	registerArchivedAsset(t, db, "test/source/path", "archive2", "path2", 200, now)
-	registerArchivedAsset(t, db, "test/source/path", "archive3", "path3", 300, now)
-
-	// Test filtering by archive list
-	out, err := source.FindArchivedAssets(ctx, database.WithArchiveSeq(slices.All([]string{"archive1", "archive3"})))
-	require.NoError(t, err)
-
-	var archivedAssets []asset.ArchivedAsset
-	for a := range out {
-		archivedAssets = append(archivedAssets, a)
-	}
-	assert.Len(t, archivedAssets, 2)
-
-	// Collect paths to verify correct assets were returned
-	paths := make([]string, len(archivedAssets))
-	for i, a := range archivedAssets {
-		paths[i] = a.Path()
-	}
-	assert.Contains(t, paths, "path1")
-	assert.Contains(t, paths, "path3")
-	assert.NotContains(t, paths, "path2")
-}
-
 func TestBackupSource_FindArchivesOnlyFullyBackedUp(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()

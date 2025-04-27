@@ -101,12 +101,3 @@ type readableFileAsset struct {
 func (r readableFileAsset) Open() (io.ReadCloser, error) {
 	return os.Open(r.Path())
 }
-
-type readableZipAsset struct {
-	asset.ArchivedAsset
-	archive *zipArchive
-}
-
-func (r readableZipAsset) Open() (io.ReadCloser, error) {
-	return r.archive.Open(r.ArchivedAsset)
-}
