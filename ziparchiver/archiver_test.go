@@ -106,31 +106,44 @@ func TestStoreAssets_Basic(t *testing.T) {
 
 	logger := zerolog.New(io.Discard)
 
-	// Store assets
 	err := ziparchiver.StoreAssets(
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 	)
 
 	require.NoError(t, err)
 
-	// Verify backup file was created
 	files, err := os.ReadDir(destDir)
 	require.NoError(t, err)
 	assert.Len(t, files, 1)
+}
 
-	// Create registry
+func TestStoreAssets_WithRegistry(t *testing.T) {
+	sourceDir := t.TempDir()
+	destDir := t.TempDir()
+
+	assets := createTestAssets(t, sourceDir, 3)
+
+	assetSeq := func(yield func(asset.Asset) bool) {
+		for _, a := range assets {
+			if !yield(a) {
+				break
+			}
+		}
+	}
+
 	registry := &MockArchivedAssetRegistry{}
 
-	// Store assets with registry
-	err = ziparchiver.StoreAssets(
+	logger := zerolog.New(io.Discard)
+
+	err := ziparchiver.StoreAssets(
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithRegisterArchivedAssets(registry),
 	)
@@ -144,7 +157,7 @@ func TestStoreAssets_Basic(t *testing.T) {
 	for _, a := range registry.assets {
 		assert.Equal(t, sourceDir, a.SourcePath(), "SourcePath should match")
 		assert.NotEmpty(t, a.ArchivePath(), "ArchivePath should be set")
-		assert.NotZero(t, a.ComputedHash(), "Hash should be computed")
+		assert.NotZero(t, a.StoredHash(), "Hash should be computed")
 	}
 }
 
@@ -194,7 +207,7 @@ func TestStoreAssets_WithFiltering(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithOnlyNewAssets(filter),
 	)
@@ -255,7 +268,7 @@ func TestStoreAssets_WithMaxFileSize(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(2500),
 	)
@@ -329,7 +342,7 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "exclude-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(1000),
 	)
@@ -364,7 +377,7 @@ func TestStoreAssets_WithLargeFileHandling(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir2, Prefix: "include-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithMaxFileBytes(1000),
 		ziparchiver.WithIncludeLargeFiles(true),
@@ -414,7 +427,7 @@ func TestStoreAssets_DryRun(t *testing.T) {
 		context.Background(),
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 		ziparchiver.WithDryRun(true),
 		ziparchiver.WithRegisterArchivedAssets(registry),
@@ -480,7 +493,7 @@ func TestStoreAssets_Cancellation(t *testing.T) {
 		ctx,
 		sourceDir,
 		ziparchiver.ArchiveDescriptor{Dir: destDir, Prefix: "backup-"},
-		iter.Seq[asset.Asset](assetSeq),
+		assetSeq,
 		logger,
 	)
 

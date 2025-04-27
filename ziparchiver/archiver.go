@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -87,33 +86,46 @@ func StoreAssets(
 
 	fullPrefix := filepath.Join(dest.Dir, fmt.Sprintf("%s%d", dest.Prefix, time.Now().UTC().UnixMilli()))
 
-	return writeAssetsToZip(ctx, sourcePath, fullPrefix, assets, onArchived, logger, o)
+	return writeAssetsToZip(ctx, sourcePath, fullPrefix, seqToReadableFileAssets(assets), onArchived, logger, writeOptions{
+		dryRun:            o.dryRun,
+		maxFileBytes:      o.maxFileBytes,
+		includeLargeFiles: o.includeLargeFiles,
+	})
+}
+
+type writeOptions struct {
+	dryRun            bool
+	maxFileBytes      int64
+	includeLargeFiles bool
 }
 
 func writeAssetsToZip(
 	ctx context.Context,
 	sourcePath string,
 	fullPrefix string,
-	assets iter.Seq[asset.Asset],
+	assets iter.Seq[readableAsset],
 	onArchived func(asset.ArchivedAsset),
 	logger zerolog.Logger,
-	o storeOptions,
+	o writeOptions,
 ) error {
 	var zipFile *zipwriter.ZipFile
-	if o.dryRun {
-		zipFile = zipwriter.NewNullZipFile()
-	} else {
-		zipFile = newZipFilePart(fullPrefix, 0)
-		logger.Info().Str("path", zipFile.Path()).Msg("open archive")
-	}
+	zipFile = newZipFilePart(fullPrefix, 0, o.dryRun)
+	logger.Info().Str("path", zipFile.Path()).Msg("open archive")
+
+	var written int64
+	var storedAssets int
 	defer func() {
 		if err := zipFile.Close(); err != nil {
 			logger.Warn().Err(err).Msg("could not close backup file")
+		} else {
+			logger.Info().
+				Int64("files_size", written).
+				Int("files_count", storedAssets).
+				Msg("successfully written backup file")
 		}
 	}()
 
 	var err error
-	var written int64
 	var part int
 	for asset := range assets {
 		if ctx.Err() != nil {
@@ -132,11 +144,19 @@ func writeAssetsToZip(
 				Msg("archive size larger than max file size. Will open a new file")
 			if err = zipFile.Close(); err != nil {
 				logger.Warn().Err(err).Msg("could not close backup file")
+			} else {
+				logger.Info().
+					Int64("files_size", written).
+					Int("files_count", storedAssets).
+					Msg("successfully written backup file")
 			}
-			part++
+
 			written = 0
-			zipFile = newZipFilePart(fullPrefix, part)
-			logger.Info().Str("path", zipFile.Path()).Msg("open archive")
+			storedAssets = 0
+			part++
+			zipFile = newZipFilePart(fullPrefix, part, o.dryRun)
+			logger.Info().Str("path", zipFile.Path()).Int("part", part).Msg("open archive")
+
 		}
 
 		header := &zip.FileHeader{
@@ -161,25 +181,27 @@ func writeAssetsToZip(
 		if err != nil {
 			logger.Warn().Err(err).Object("asset", asset).
 				Msg("could not backup asset")
+			continue
 		} else {
 			logger.Debug().Object("asset", asset).
 				Msg("backed up asset")
 		}
 		written += asset.Size()
+		storedAssets++
 		onArchived(archivedAsset)
 	}
 
 	return nil
 }
 
-func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.Writer, logger zerolog.Logger) (asset.ArchivedAsset, error) {
-	assetFile, err := os.Open(asset.Path())
+func writeAsset(sourcePath string, archivePath string, asset readableAsset, w io.Writer, logger zerolog.Logger) (asset.ArchivedAsset, error) {
+	reader, err := asset.Open()
 	if err != nil {
 		return nil, err
 	}
 	startTime := time.Now()
 	defer func() {
-		if err := assetFile.Close(); err != nil {
+		if err := reader.Close(); err != nil {
 			logger.Warn().Err(err).Msg("failed to close asset file")
 		}
 		tookSeconds := time.Since(startTime).Seconds()
@@ -187,7 +209,7 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 	}()
 
 	// Write to zip as well as compute hash.
-	tee := io.TeeReader(assetFile, w)
+	tee := io.TeeReader(reader, w)
 	h, err := fileutils.ComputeHash(tee)
 	if err != nil {
 		return nil, err
@@ -204,7 +226,11 @@ func writeAsset(sourcePath string, archivePath string, asset asset.Asset, w io.W
 	}, nil
 }
 
-func newZipFilePart(fullPrefix string, part int) *zipwriter.ZipFile {
+func newZipFilePart(fullPrefix string, part int, dryRun bool) *zipwriter.ZipFile {
+	if dryRun {
+		return zipwriter.NewNullZipFile()
+	}
+
 	if part == 0 {
 		return zipwriter.NewLazyZipFile(fmt.Sprintf("%s.zip", fullPrefix))
 	}
@@ -224,6 +250,16 @@ func iterChannel[T any](ctx context.Context, ch <-chan T) iter.Seq[T] {
 				if !yield(item) {
 					return
 				}
+			}
+		}
+	}
+}
+
+func seqToReadableFileAssets(assets iter.Seq[asset.Asset]) iter.Seq[readableAsset] {
+	return func(yield func(readableAsset) bool) {
+		for a := range assets {
+			if !yield(readableFileAsset{a}) {
+				return
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/stupid-simple/backup/fileutils"
 )
 
 const fourGiB = 2 << 31
@@ -59,4 +60,8 @@ func (a *fsAsset) MarshalZerologObject(e *zerolog.Event) {
 // Path implements Asset.
 func (a *fsAsset) Path() string {
 	return a.path
+}
+
+func (a *fsAsset) ComputeHash() (uint64, error) {
+	return fileutils.ComputeFileHash(a.path)
 }

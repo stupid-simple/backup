@@ -12,21 +12,21 @@ import (
 	"github.com/stupid-simple/backup/scheduler"
 )
 
-func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) error {
-	if args.Daemon.DryRun {
+func daemonCommand(ctx context.Context, args DaemonCommand, logger zerolog.Logger) error {
+	if args.DryRun {
 		logger = logger.With().Bool("dryrun", true).Logger()
 	}
 
-	if args.Daemon.Database == "" {
+	if args.Database == "" {
 		return fmt.Errorf("no database specified")
 	}
 
-	cfg, err := config.LoadFromFile(args.Daemon.Config)
+	cfg, err := config.LoadFromFile(args.Config)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
 
-	dbCli, err := newSQLite(args.Daemon.Database, logger, args.Daemon.DryRun)
+	dbCli, err := newSQLite(args.Database, logger)
 	if err != nil {
 		return fmt.Errorf("could not open database: %w", err)
 	}
@@ -34,23 +34,23 @@ func daemonCommand(ctx context.Context, args Command, logger zerolog.Logger) err
 	db := &database.Database{
 		Cli:    dbCli,
 		Logger: logger,
-		DryRun: args.Daemon.DryRun,
+		DryRun: args.DryRun,
 	}
 
 	scheduler := scheduler.NewScheduler(scheduler.SchedulerParams{
 		Logger: logger,
 	})
 
-	err = addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+	err = addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.DryRun)
 	if err != nil {
 		return fmt.Errorf("could not add sync jobs: %w", err)
 	}
 
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	startConfigFileWatcher(ctx, args.Daemon.Config, logger, ticker, func(cfg *config.Config) {
+	startConfigFileWatcher(ctx, args.Config, logger, ticker, func(cfg *config.Config) {
 		scheduler.RemoveJobs()
-		err := addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.Daemon.DryRun)
+		err := addSyncJobsFromConfig(ctx, scheduler, cfg, db, logger, args.DryRun)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to add sync jobs")
 		}

@@ -78,7 +78,7 @@ Other example:
 ### `ssbak backup -s <source dir> -D <dest dir> -d <database file>` = Manually backup files
 
 This commands scans the source directory for files and copies them into a new archive in target directory.
-By default only new or modified files are copied.
+By default only new or modified files are copied. Use the `--full` flag to backup all files from the source directory.
 
 The files are registered in the database.
 
@@ -86,6 +86,12 @@ The files are registered in the database.
 
 This command will restore files into the target directory. The database is used as a reference source for the files
 that should be restored.
+
+### `ssbak clean -d <database file>` = Manually clean old files
+
+This command will remove the archives in which all backup files are already backed up in newer archives.
+
+*IMPORTANT* This will remove previous versions of backup files.
 
 ## Build
 
@@ -117,11 +123,9 @@ golangci-lint run
 
 ### Container
 
-The container image uses alpine. To build the container is necessary to build the binary statically.
-
 ```shell
 # Build docker image for compilation.
-CGO_ENABLED=0 go build -o ssbak .
+go build -o ssbak .
 # Build ssbak container.
 docker build -t ghcr.io/stupid-simple/backup .
 ```

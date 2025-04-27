@@ -76,3 +76,17 @@ func TestLoad_Bad(t *testing.T) {
 		t.Error("expected error")
 	}
 }
+
+func TestLoad_NoFile(t *testing.T) {
+	_, err := config.LoadFromFile("unexisting")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestLoad_Unreadable(t *testing.T) {
+	_, err := config.LoadFromFile(t.TempDir())
+	if err == nil {
+		t.Error("expected error")
+	}
+}

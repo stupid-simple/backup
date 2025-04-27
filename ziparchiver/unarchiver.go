@@ -13,7 +13,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stupid-simple/backup/asset"
-	"github.com/stupid-simple/backup/fileutils"
 )
 
 var (
@@ -109,11 +108,12 @@ func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, o
 			return 0, errSkippedSameFile
 		}
 
-		storedFileHash, err := fileutils.ComputeFileHash(asset.Path())
+		// Check if the file on disk has been modified.
+		storedFileHash, err := asset.ComputeHash()
 		if err != nil {
 			return 0, err
 		}
-		if storedFileHash != asset.ComputedHash() && overwrite {
+		if storedFileHash != asset.StoredHash() && overwrite {
 			logger.Info().Str("path", asset.Path()).Msg("found existing file, overwriting")
 			if dryRun {
 				return 0, nil
@@ -135,7 +135,7 @@ func restoreAsset(f fs.File, asset asset.ArchivedAsset, logger zerolog.Logger, o
 			}()
 
 			return io.Copy(w, f)
-		} else if storedFileHash != asset.ComputedHash() {
+		} else if storedFileHash != asset.StoredHash() {
 			return 0, errSkippedModified
 		} else {
 			// Should be unreachable.

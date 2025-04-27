@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"iter"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -22,10 +23,36 @@ func (d *Database) GetSource(ctx context.Context, path string) (*BackupSource, e
 	d.Logger.Debug().Str("path", path).Msg("get source")
 
 	source := &Source{}
-	err := d.Cli.Where(Source{Path: path}).FirstOrCreate(source).Error
+	var err error
+	if d.DryRun {
+		err = d.Cli.Where(Source{Path: path}).First(source).Error
+	} else {
+		err = d.Cli.Where(Source{Path: path}).FirstOrCreate(source).Error
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return &BackupSource{db: d, record: source, logger: d.Logger.With().Str("source", path).Logger()}, nil
+}
+
+func (d *Database) IterSources(ctx context.Context) (iter.Seq[*BackupSource], error) {
+
+	d.Logger.Debug().Msg("get sources")
+
+	sources := []Source{}
+	d.Lock.Lock()
+	err := d.Cli.WithContext(ctx).Find(&sources).Error
+	d.Lock.Unlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return func(yield func(*BackupSource) bool) {
+		for _, source := range sources {
+			if !yield(&BackupSource{db: d, record: &source, logger: d.Logger.With().Str("source", source.Path).Logger()}) {
+				break
+			}
+		}
+	}, nil
 }
