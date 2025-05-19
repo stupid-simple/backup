@@ -3,7 +3,7 @@ module github.com/stupid-simple/backup
 go 1.23
 
 require (
-	github.com/alecthomas/kong v1.10.0
+	github.com/alecthomas/kong v1.11.0
 	github.com/cespare/xxhash v1.1.0
 	github.com/docker/go-units v0.5.0
 	github.com/glebarez/sqlite v1.11.0
